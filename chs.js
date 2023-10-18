@@ -442,7 +442,7 @@ var cnPrefix = {
     "Power producer [": "力量产生器 [",
     "Goal: ": "目标: ",
     "Achieve ": "达到 ",
-    "": "",
+    "Next at ": "下一个在 ",
     "": "",
     "": "",
 }
