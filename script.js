@@ -143,7 +143,7 @@ function reset() {
 
 //If the user confirms the hard reset, resets all variables, saves and refreshes the page
 function hardReset() {
-  if (confirm("Are you sure you want to reset? You will lose everything!")) {
+  if (confirm("A您确定要重置吗？ 你将失去一切！")) {
     reset()
     save()
     location.reload()
@@ -1022,7 +1022,7 @@ function baseShift() {
 
 function gainClusters() {
 	if (game.currentBase <= 5 && game.number.gte(new Decimal(4).pow(new Decimal(8).mul(game.clusterLevel.add(1)).add(9)))) {
-		if (!game.confirmations[0] || confirm("Are you sure you want to reset for clusters?")) {
+		if (!game.confirmations[0] || confirm("您确定要重置集群吗?")) {
 			let enactClusterLimit = true
 			if (game.clusterLevel.gt(game.clusterLimit)) enactClusterLimit = false
 			game.clusters = game.clusters.add(game.clustersToGet)
@@ -1099,7 +1099,7 @@ function buyClusterUpgrade(x) {
 }
 
 function respecClusters() {
-	if (!game.confirmations[1] || confirm("Are you sure you want to respec? It will perform a cluster reset!")) {
+	if (!game.confirmations[1] || confirm("您确定要重洗吗？ 它将执行集群重置!")) {
 		if (game.currentChallenge > 0) game.currentChallenge = 0
 		clusterReset()
 		game.clusters = game.totalClusters
@@ -1122,7 +1122,7 @@ function enterChallenge(x) {
 	if (game.currentChallenge == x) {
 		exitChallenge()
 	}
-	else if (!game.confirmations[2] || confirm("Are you sure you want to enter challenge " + x + "? It will perform a cluster reset!")) {
+	else if (!game.confirmations[2] || confirm("您确定要进入挑战 " + x + "吗? 它将执行集群重置!")) {
 		game.currentChallenge = x
 		//Respec clusters if in challenge 6
 		if (game.currentChallenge == 6) {
@@ -1151,7 +1151,7 @@ function exitChallenge() {
 			$(".challengesBeaten").eq(i).html(game.challengesBeaten[i])
 		}
 	}
-	else if (!game.confirmations[3] || confirm("Are you sure you want to exit your current challenge?")) {
+	else if (!game.confirmations[3] || confirm("您确定要退出当前的挑战吗?")) {
 		game.currentChallenge = 0
 		clusterReset()
 		for (let i=0; i<6; i++) $(".challengeButton").eq(i).css("border", "2px solid #bbb")
@@ -1196,11 +1196,11 @@ function maxVectorUpgrades() {
 }
 
 function enterExitBasedverse() {
-	if (!game.inBasedverse && (!game.confirmations[4] || confirm("Are you sure you want to enter the basedverse? It will perform a cluster reset!"))) {
+	if (!game.inBasedverse && (!game.confirmations[4] || confirm("您确定要进入基础宇宙吗？ 它将执行集群重置!"))) {
 		game.inBasedverse = true
 		clusterReset()
 	}
-	else if (game.inBasedverse && (!game.confirmations[4] || confirm("Are you sure you want to exit the basedverse?"))) {
+	else if (game.inBasedverse && (!game.confirmations[4] || confirm("您确定要退出基础宇宙吗?"))) {
 		game.inBasedverse = false
 		let effectiveBase = game.basedverseBase.sub(1)
 		let basePointsCanGet = game.number.add(1).div(effectiveBase).log(effectiveBase).div(effectiveBase).floor()
@@ -1237,7 +1237,7 @@ function spendBasePoints(x) {
 }
 
 function respecBasePoints() {
-	if (!game.confirmations[5] || confirm("Are you sure you want to respec your base points? It will perform a cluster reset!")) {
+	if (!game.confirmations[5] || confirm("您确定要重洗您的基础点数吗？ 它将执行集群重置!")) {
 		game.upBase = new Decimal(0)
 		game.downBase = new Decimal(0)
 		game.basePoints = game.totalBasePoints
@@ -1247,7 +1247,7 @@ function respecBasePoints() {
 
 function cascade() {
 	let cBase = new Decimal(game.currentBase-1)
-	if (game.number.gte(cBase.pow(cBase.pow(cBase).add(1))) && (!game.confirmations[6] || confirm("Are you sure you want to reset for a cascade?"))) {
+	if (game.number.gte(cBase.pow(cBase.pow(cBase).add(1))) && (!game.confirmations[6] || confirm("您确定要重置级联吗？"))) {
 		cascadeReset()
 		if (game.postCascade) {
 			game.cascades = game.cascades.add(game.cascadesToGet)
