@@ -12,19 +12,20 @@
   <meta content="#008800" data-react-helmet="true" name="theme-color" />
   <meta name="color-scheme" content="light only">
   <link rel="icon" type="image/x-icon" href="icon.png">
-  <link href="style.css?v130=1" rel="stylesheet" type="text/css" />
+  <link href="style.css?v1422=1" rel="stylesheet" type="text/css" />
 </head>
 <body>
 	<script src="chs.js"></script>
 	<script src="core.js"></script>
-	<h2 style="color: #ada; margin-top: 10px; display: inline-block; vertical-align: top; user-select: none" onclick="$('#borzoi').css('display','block')">Hyper Game</h2><p style="color: #ada; display: inline-block">v1.3.0</p>
+	<h2 style="color: #ada; margin-top: 10px; display: inline-block; vertical-align: top; user-select: none" onclick="$('#borzoi').css('display','block')">Hyper Game</h2><p style="color: #ada; display: inline-block">v1.4.2</p>
 	<img src="borzoi.png" id="borzoi" style="width: 300px; position: absolute; left: 0; top: 0; display: none" onclick="$('#borzoi').css('display','none')">
 	<div id="game">
 		<h1 id="number">1E1</h1>
+		<p id="slogsText" style="color: #d44; text-align: center; font-size: 24px; display: none">You have <span id="slogs">0</span> slogs</p>
 		<center>
 			<button class="tabButton" onclick="switchTab(1)">Hyper-E</button>
 			<button class="tabButton" style="border: 2px solid #eb2; color: #eb2; display: none" onclick="switchTab(2)">Cascade</button>
-			<button class="tabButton" style="border: 2px solid #afa; color: #afa; display: none" onclick="switchTab(5)">The end</button>
+			<button class="tabButton" style="border: 2px solid #57e; color: #57e; display: none" onclick="switchTab(5)">Deuteric</button>
 			<button class="tabButton" style="border: 2px solid #ca8; color: #ca8" onclick="switchTab(3)">Achievements</button>
 			<button class="tabButton" style="border: 2px solid #888; color: #888" onclick="switchTab(4)">Settings</button>
 		</center><br>
@@ -138,8 +139,9 @@
 			<!--Hyper-E - base points-->
 			<div class="hyperESubTab" style="display: none">
 				<center>
-				<h2 style="color: #47e">You have <span id="basePoints">0</span> base points (<span id="totalBasePoints">0</span> total)</h2><br><br>
+				<h2 style="color: #47e">You have <span id="basePoints">0</span> base points (<span id="totalBasePoints">0</span> total)<span id="basePointCap" style="color: #999"></span></h2><br><br>
 				<button id="basedverseButton" onclick="enterExitBasedverse()"><b><span id="basedverseButtonText">Enter</span> the Basedverse</b><br>You are trapped in base <span id="basedverseBase">20</span>.<br>Upon leaving you will gain base points based on your number.</button>
+				<div id="basePointProgressBar"><div id="basePointProgressBarInner"></div></div><br>
 				<p id="basePointsText" style="color: #47e"></p>
 				<div style="display: inline-block">
 					<h2 style="color: #edc">You have <span id="upBase">0</span> up-base</h2>
@@ -182,13 +184,16 @@
 				<button class="layerButton" style="border: 2px solid #c94; color: #eb2; width: 350px" onclick="buyLayer(5)">5th layer [0]<br>Costs 32 cascades</button><br>
 				<button class="layerButton" style="border: 2px solid #c94; color: #eb2; width: 350px" onclick="buyLayer(6)">6th layer [0]<br>Costs 64 cascades</button><br>
 				<button style="border: 2px solid #c94; color: #eb2; width: 350px" onclick="buyMaxLayers()">Buy max layers (L)</button><br>
+				<button id="layerAutobuyer" style="border: 2px solid #c94; color: #eb2; width: 350px; display: none" onclick="changeAutobuyer(3)">Layer autobuyer: <span class="autobuyer" style="color: #0b0">On</span></button>
 				<p style="color: #c94">Each layer produces the one before it. Power producers produce power.<br>Hold shift to see bought layer amounts</p>
-				
 				</center>
 			</div>
 			<!--Cascade - recent-->
 			<div class="cascadeSubTab">
-				<center><p style="color: #e72"><span style="font-size: 24px; color: #eb2"><b>Recent cascades:</b></span><br><span id="recentCascades"></span></p></center>
+				<center>
+				<p id="thisCascade" style="color: #eb2">Time this cascade: 0s, 0 cascades to get (0.00/s)</p>
+				<p style="color: #e72"><span style="font-size: 24px; color: #eb2"><b>Recent cascades:</b></span><br><span id="recentCascades"></span></p>
+				</center>
 			</div>
 			<!--Cascade - milestones-->
 			<div class="cascadeSubTab" style="display: none">
@@ -219,7 +224,7 @@
 						<div class="shadowMilestone"><span style="font-size: 24px"><b>15,000 crystals</b></span><br>Shadow crystals multiply divine power/s<br>Currently x<span class="shadowMilestoneEffect">1.00</div>
 						<div class="shadowMilestone"><span style="font-size: 24px"><b>100,000 cr.</b></span><br>Automatically buy post-cascade upgrade 1 at no cost</div>
 						<div class="shadowMilestone"><span style="font-size: 24px"><b>10,000,000 cr.</b></span><br>Gain 100% of potential cascades per second</div>
-						<div class="shadowMilestone"><span style="font-size: 24px"><b>1.00e15 cr.</b></span><br>Finish <span style="color: #ada">Hyper Game</span>!</span></div>
+						<div class="shadowMilestone"><span style="font-size: 24px"><b>1.00e10 cr.</b></span><br>Alpha-flavour effect is increased, and unlock <span style="color: #57e">Deuteric</span></span></div>
 					</div>
 				</div>
 				</center>
@@ -235,7 +240,7 @@
 					<button class="postCascadeUpgrade" onclick="buyPostCascadeUpgrade(4)">Multiply cascade gain based on unspent clusters<br>Currently x<span class="postCascadeUpgradeEffect">1.00</span><br>Costs 120 cascades</button>
 					<button class="postCascadeUpgrade" onclick="buyPostCascadeUpgrade(5)">Cluster upgrades are always bought at no cost<br>Costs 300 cascades</button>
 					<button class="postCascadeUpgrade" onclick="buyPostCascadeUpgrade(6)">Gain 100% of potential hyper-points per second<br>Costs 750 cascades</button>
-					<button class="postCascadeUpgrade" onclick="buyPostCascadeUpgrade(7)">Gain 10% of best cascades per second (Currently <span id="bestCascadesPerSecond">0.00</span>/s)<br>Also unlocks flavours<br>Costs 1,000 cascades</button>
+					<button class="postCascadeUpgrade" onclick="buyPostCascadeUpgrade(7)">Gain 10% of best cascades per second (Currently <span id="bestCascadesPerSecond">0.00</span>/s)<br>Also unlocks <span style="color: #0ff">flavours</span><br>Costs 1,000 cascades</button>
 					<button class="postCascadeUpgrade" onclick="buyPostCascadeUpgrade(8)">Improve post-cascade upgrade 1 cost<br>Costs 5,000,000 cascades</button>
 					<button class="postCascadeUpgrade" onclick="buyPostCascadeUpgrade(9)">Layer production is multiplied by (layers bought)^3 instead of ^1<br>Costs 250,000,000 cascades</button>
 					<button class="postCascadeUpgrade" onclick="buyPostCascadeUpgrade(10)">Unlock <span style="color: #666">Shadow crystals</span> and <span style="color: #666">Shadow milestones</span><br>Costs 1.00e12 cascades</button>
@@ -247,19 +252,19 @@
 				<center>
 				<button class="flavourUnlockButton" style="border: 2px solid #0ff; color: #0ff; width: 400px" onclick="unlockFlavour(1)">Unlock Alpha-flavour<br>Costs 500 cascades</button>
 				<p class="flavourText" style="color: #0ff; display: none">You have <span class="flavour">0</span> alpha-flavour, increasing factor production by ^<span class="flavourEffect">1.00</span> and multiplying cascade gain by <span class="flavourEffect">1.00</span><br>Each alpha-flavour costs <span class="flavourCost">1,000</span> cascades!</p>
-				<button class="flavourButton" style="border: 2px solid #0ff; color: #0ff; width: 400px; display: none" onclick="convertFlavour(1)">Turn all cascades into <span class="flavourToGet">0</span> α-flavour</button>
+				<button class="flavourButton" style="border: 2px solid #0ff; color: #0ff; width: 400px; display: none" onclick="convertFlavour(1)">Turn all cascades into <span class="flavourToGet">0</span> α-flavour (1)</button>
 				<button class="flavourUnlockButton" style="border: 2px solid #4bf; color: #4bf; width: 400px" onclick="unlockFlavour(2)">Unlock Beta-flavour<br>Costs 100,000 cascades</button>
 				<p class="flavourText" style="color: #4bf; display: none">You have <span class="flavour">0</span> beta-flavour, multiplying alpha-flavour gain by <span class="flavourEffect">1.00</span> and multiplying cascade gain by <span class="flavourEffect">1.00</span><br>Each beta-flavour costs <span class="flavourCost">1,000</span> alpha-flavour!</p>
-				<button class="flavourButton" style="border: 2px solid #4bf; color: #4bf; width: 400px; display: none" onclick="convertFlavour(2)">Turn all alpha-flavour into <span class="flavourToGet">0</span> β-flavour</button>
+				<button class="flavourButton" style="border: 2px solid #4bf; color: #4bf; width: 400px; display: none" onclick="convertFlavour(2)">Turn all alpha-flavour into <span class="flavourToGet">0</span> β-flavour (2)</button>
 				<button class="flavourUnlockButton" style="border: 2px solid #88f; color: #88f; width: 400px" onclick="unlockFlavour(3)">Unlock Gamma-flavour<br>Costs 1,000,000 cascades</button>
 				<p class="flavourText" style="color: #88f; display: none">You have <span class="flavour">0</span> gamma-flavour, multiplying beta-flavour gain by <span class="flavourEffect">1.00</span> and multiplying cascade gain by <span class="flavourEffect">1.00</span><br>Each gamma-flavour costs <span class="flavourCost">1,000</span> beta-flavour!</p>
-				<button class="flavourButton" style="border: 2px solid #88f; color: #88f; width: 400px; display: none" onclick="convertFlavour(3)">Turn all beta-flavour into <span class="flavourToGet">0</span> γ-flavour</button>
+				<button class="flavourButton" style="border: 2px solid #88f; color: #88f; width: 400px; display: none" onclick="convertFlavour(3)">Turn all beta-flavour into <span class="flavourToGet">0</span> γ-flavour (3)</button>
 				<button class="flavourUnlockButton" style="border: 2px solid #b4f; color: #b4f; width: 400px" onclick="unlockFlavour(4)">Unlock Delta-flavour<br>Costs 100,000,000 cascades</button>
 				<p class="flavourText" style="color: #b4f; display: none">You have <span class="flavour">0</span> delta-flavour, multiplying gamma-flavour gain by <span class="flavourEffect">1.00</span> and multiplying cascade gain by <span class="flavourEffect">1.00</span><br>Each delta-flavour costs <span class="flavourCost">1,000</span> gamma-flavour!</p>
-				<button class="flavourButton" style="border: 2px solid #b4f; color: #b4f; width: 400px; display: none" onclick="convertFlavour(4)">Turn all gamma-flavour into <span class="flavourToGet">0</span> δ-flavour</button>
+				<button class="flavourButton" style="border: 2px solid #b4f; color: #b4f; width: 400px; display: none" onclick="convertFlavour(4)">Turn all gamma-flavour into <span class="flavourToGet">0</span> δ-flavour (4)</button>
 				<button class="flavourUnlockButton" style="border: 2px solid #f0f; color: #f0f; width: 400px" onclick="unlockFlavour(5)">Unlock Epsilon-flavour<br>Costs 1.00e10 cascades</button>
 				<p class="flavourText" style="color: #f0f; display: none">You have <span class="flavour">0</span> epsilon-flavour, multiplying delta-flavour gain by <span class="flavourEffect">1.00</span> and multiplying cascade gain by <span class="flavourEffect">1.00</span><br>Each epsilon-flavour costs <span class="flavourCost">1,000</span> delta-flavour!</p>
-				<button class="flavourButton" style="border: 2px solid #f0f; color: #f0f; width: 400px; display: none" onclick="convertFlavour(5)">Turn all delta-flavour into <span class="flavourToGet">0</span> ε-flavour</button>
+				<button class="flavourButton" style="border: 2px solid #f0f; color: #f0f; width: 400px; display: none" onclick="convertFlavour(5)">Turn all delta-flavour into <span class="flavourToGet">0</span> ε-flavour (5)</button>
 				</center>
 			</div>
 			<!--Cascade - shadow mind-->
@@ -285,10 +290,10 @@
 				<button class="shadowUpgrade" onclick="buyShadowUpgrade(1)">Double shadow power/s<br>Currently x<span class="shadowUpgradeEffect">1.00</span><br>Costs <span class="shadowUpgradeCost">100,000</span> shadow power</button>
 				<button class="shadowUpgrade" onclick="buyShadowUpgrade(2)">Decrease shadow crystal requirement<br>Costs <span class="shadowUpgradeCost">5,000,000</span> shadow power</button>
 				<button class="shadowUpgrade" onclick="unlockBloodCrystals()">Unlock <span style="color: #b22">blood crystals</span><br>Costs 25,000,000 shadow power</button>
-				<button class="bloodUpgrade" onclick="buyBloodUpgrade(1)">Double blood power/s<br>Costs <span class="bloodUpgradeCost">100,000</span> blood power</button>
+				<button class="bloodUpgrade" onclick="buyBloodUpgrade(1)">Double blood power/s<br>Currently x<span class="bloodUpgradeEffect">1.00</span><br>Costs <span class="bloodUpgradeCost">100,000</span> blood power</button>
 				<button class="bloodUpgrade" onclick="buyBloodUpgrade(2)">Decrease blood crystal requirement<br>Costs <span class="bloodUpgradeCost">5,000,000</span> blood power</button>
 				<button class="bloodUpgrade" onclick="unlockDivineCrystals()">Unlock <span style="color: #ff8">divine crystals</span><br>Costs 25,000,000 blood power</button>
-				<button class="divineUpgrade" onclick="buyDivineUpgrade(1)">Double divine power/s<br>Costs <span class="divineUpgradeCost">100,000</span> divine power</button>
+				<button class="divineUpgrade" onclick="buyDivineUpgrade(1)">Double divine power/s<br>Currently x<span class="divineUpgradeEffect">1.00</span><br>Costs <span class="divineUpgradeCost">100,000</span> divine power</button>
 				<button class="divineUpgrade" onclick="buyDivineUpgrade(2)">Decrease divine crystal requirement<br>Costs <span class="divineUpgradeCost">5,000,000</span> divine power</button>
 				</center>
 			</div>
@@ -298,6 +303,12 @@
 			<center>
 			<div id="achievements">
 				<!--I know these could be created through JS but I'm lazy-->
+				<div class="achievement"></div>
+				<div class="achievement"></div>
+				<div class="achievement"></div>
+				<div class="achievement"></div>
+				<div class="achievement"></div>
+				<div class="achievement"></div>
 				<div class="achievement"></div>
 				<div class="achievement"></div>
 				<div class="achievement"></div>
@@ -341,30 +352,104 @@
 			<button class="confirmationButton" style="border: 2px solid #47e; color: #888; display: none" onclick="changeConfirmation(5)">Basedverse enter/exit confirmation: <span class="confirmation" style="color: #0b0">On</span></button>
 			<button class="confirmationButton" style="border: 2px solid #47e; color: #888; display: none" onclick="changeConfirmation(6)">Base points respec confirmation: <span class="confirmation" style="color: #0b0">On</span></button>
 			<button class="confirmationButton" style="border: 2px solid #eb2; color: #888; display: none" onclick="changeConfirmation(7)">Cascade confirmation: <span class="confirmation" style="color: #0b0">On</span></button>
+			<button class="confirmationButton" style="border: 2px solid #46d; color: #888; display: none" onclick="changeConfirmation(8)">Deuteric confirmation: <span class="confirmation" style="color: #0b0">On</span></button>
+			<button class="confirmationButton" style="border: 2px solid #46d; color: #888; display: none" onclick="changeConfirmation(9)">Deuteric challenge enter confirmation: <span class="confirmation" style="color: #0b0">On</span></button>
+			<button class="confirmationButton" style="border: 2px solid #46d; color: #888; display: none" onclick="changeConfirmation(10)">Deuteric challenge exit confirmation: <span class="confirmation" style="color: #0b0">On</span></button>
 			<br><br>
 			<button style="border: 2px solid #888; color: #888" onclick="save()">Manual save</button><br>
 			<button style="border: 2px solid #888; color: #888" onclick="exportGame()">Export</button><br>
 			<button style="border: 2px solid #888; color: #888" onclick="importGame()">Import</button><br>
 			<button style="border: 2px solid #b44; color: #b44" onclick="hardReset()">Hard reset</button><br><br>
+			<p style="color: #bbb">Time played: <a id="timePlayed">0:00:00</a></p>
 			<p>Made by Demonin<br>HyperNum made with help from solarzone<br>Heavily inspired by <a href="https://flamemasternxf.github.io/ordinal-pringles/">Ordinal Pringles</a> (<a href="https://galaxy.click/play/8">galaxy link</a>)<br>
 			<span style="color: #57c">Want to stay up-to-date with updates and chat about the game? Check out the <a href="https://discord.gg/7PChmUV3wk">Discord</a>!<span><br>
 			<span style="color: #f55">Want to support my game development efforts and get early access to updates? Check out my <a href="https://www.patreon.com/Demonin">Patreon</a> :)</span></p>
 			</center>
 			<p id="a"></p>
 		</div>
-		<!--The end tab-->
+		<!--Deuteric tab-->
 		<div class="tab" style="display: none">
 			<center>
-			<h1>🎉🎉🎉</h1>
-			<p style="color: #ada">Congratulations, you've hit the end of Hyper Game! If you're still seeking more, you can check out my <a href="https://demonin.com/games/">other projects</a>.</p>
-			</center>
+			<button class="deutericSubTabButton" style="border: 2px solid #46d; color: #88d" onclick="switchDeutericSubTab(1)">Deuteric</button>
+			<button class="deutericSubTabButton" style="border: 2px solid #46d; color: #88d" onclick="switchDeutericSubTab(2)">Recent</button>
+			<button class="deutericSubTabButton" style="border: 2px solid #46d; color: #88d" onclick="switchDeutericSubTab(3)">Milestones</button>
+			<button class="deutericSubTabButton" style="border: 2px solid #bbb; color: #bbb; display: none" onclick="switchDeutericSubTab(4)">Challenges</button>
+			<br><br>
+			<h2 style="color: #6ad">You have <span id="deuteric">0</span> deuteric</h2>
+			<p style="color: #6ad; margin: 0">(<span id="totalDeuteric">0</span> total)</p><br>
+			<button id="deutericButton" style="border: 2px solid #46d; color: #88d; padding: 8px" onclick="deuteric()">Reset previous progress to gain a deuteric (D)</button>
+			<p id="firstDeutericNote" style="color: #999;">Note: Deuteric gain is limited to 1 on the first reset!</p>
+			</center><br><br>
+			<!--Deuteric - deuteric-->
+			<div class="deutericSubTab">
+				<center>
+				<p style="color: #6ad">You have <span id="deuterium">0</span> deuterium, multiplying factor production and cascade gain by <span id="deuteriumEffect">1.00</span></p>
+				<button class="combinatorButton" style="border: 2px solid #46d; color: #88d; width: 350px" onclick="buyCombinator(0)">Deuterium producer [0]<br>Costs 1 deuteric</button><br>
+				<button class="combinatorButton" style="border: 2px solid #46d; color: #88d; width: 350px" onclick="buyCombinator(1)">1st combinator [0]<br>Costs 2 deuteric</button><br>
+				<button class="combinatorButton" style="border: 2px solid #46d; color: #88d; width: 350px" onclick="buyCombinator(2)">2nd combinator [0]<br>Costs 4 deuteric</button><br>
+				<button class="combinatorButton" style="border: 2px solid #46d; color: #88d; width: 350px" onclick="buyCombinator(3)">3rd combinator [0]<br>Costs 8 deuteric</button><br>
+				<button class="combinatorButton" style="border: 2px solid #46d; color: #88d; width: 350px" onclick="buyCombinator(4)">4th combinator [0]<br>Costs 16 deuteric</button><br>
+				<button class="combinatorButton" style="border: 2px solid #46d; color: #88d; width: 350px" onclick="buyCombinator(5)">5th combinator [0]<br>Costs 32 deuteric</button><br>
+				<button class="combinatorButton" style="border: 2px solid #46d; color: #88d; width: 350px" onclick="buyCombinator(6)">6th combinator [0]<br>Costs 64 deuteric</button><br>
+				<button style="border: 2px solid #46d; color: #88d; width: 350px" onclick="buyMaxLayers()">Buy max combinators</button><br>
+				<p style="color: #6ad">Each combinator produces the one before it. Deuterium producers produce deuterium.<br>Hold shift to see bought combinator amounts</p>
+				</center>
+			</div>
+			<!--Deuteric - recent-->
+			<div class="deutericSubTab" style="display: none">
+				<center>
+				<p id="thisDeuteric" style="color: #6ad">Time this deuteric: 0s, 0 deuteric to get (0.00/s)</p>
+				<p style="color: #66d"><span style="font-size: 24px; color: #6ad"><b>Recent deuterics:</b></span><br><span id="recentDeuterics"></span></p>
+				</center>
+			</div>
+			<!--Deuteric - milestones-->
+			<div class="deutericSubTab" style="display: none">
+				<center>
+				<p style="color: #6ad">Deuteric milestones are based on total deuteric, not current deuteric!</p>
+				<div class="milestones">
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>1 deuteric</b></span><br>Keep factor autobuyer and 100% of hyper-points per second</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>2 deuteric</b></span><br>Always keep challenge completions, and unlock combinators</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>3 deuteric</b></span><br>Increase shadow power gain and effect cap</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>4 deuteric</b></span><br>Keep auto post-cascade upgrade 1 and autobuy crystal upgrades at no cost</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>6 deuteric</b></span><br>Increase blood power gain and effect cap</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>8 deuteric</b></span><br>Keep post-cascade upgrades (besides the 1st) on deuteric reset</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>12 deuteric</b></span><br>Increase divine power gain and effect cap</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>16 deuteric</b></span><br>Bought combinators (+ deuterium producers) multiply that combinator's production</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>25 deuteric</b></span><br>Increase base point limit to 2500</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>40 deuteric</b></span><br>Unlock <span style="color: #aaa">Deuteric challenges</span></div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>50 deuteric</b></span><br>Up-base and down-base are always equal to total base points</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>60 deuteric</b></span><br>Vector gain is always enabled (with no downside) and vector uprades are auto-maxed</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>75 deuteric</b></span><br>Multiply combinator production by 10 and square deuterium effect</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>100 deuteric</b></span><br>Completed challenges multiply shadow/blood/divine power gain<br>Currently x<span class="deutericMilestoneEffect">1.00</span></div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>150 deuteric</b></span><br>Flavours 2-5 are always equal to alpha-flavour amount</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>250 deuteric</b></span><br>Always keep shadow milestone 3, and keep cascade milestones</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>350 deuteric</b></span><br>Unlock an autobuyer for layers (at no cost)</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>500 deuteric</b></span><br>Layer production is squared</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>650 deuteric</b></span><br>Flavours are always equal to highest cascade amount</div>
+					<div class="deutericMilestone"><span style="font-size: 24px"><b>1000 deuteric</b></span><br>Unlock something...<br>Not in this update!</div>
+				</div>
+				</center>
+			</div>
+			<!--Deuteric - challenges-->
+			<div class="deutericSubTab" style="display: none">
+				<center>
+				<button id="exitDeutericChallengeButton" onclick="exitDeutericChallenge()">Exit current challenge</button>
+				<div id="deutericChallenges">
+					<button class="deutericChallengeButton" onclick="enterDeutericChallenge(1)"><span style="font-size: 24px"><b>Challenge 1 (<span class="deutericChallengesBeaten">0</span>/3)</b></span><br><span class="deutericChallengeInfo"></span><br><span style="color: #4b8">Reward: Shadow crystal effect cap is increased</span></button>
+					<button class="deutericChallengeButton" onclick="enterDeutericChallenge(2)"><span style="font-size: 24px"><b>Challenge 2 (<span class="deutericChallengesBeaten">0</span>/3)</b></span><br><span class="deutericChallengeInfo"></span><br><span style="color: #4b8">Reward: Blood crystal effect cap is increased</span></button>
+					<button class="deutericChallengeButton" onclick="enterDeutericChallenge(3)"><span style="font-size: 24px"><b>Challenge 3 (<span class="deutericChallengesBeaten">0</span>/3)</b></span><br><span class="deutericChallengeInfo"></span><br><span style="color: #4b8">Reward: Divine crystal effect cap is increased</span></button>
+					<button class="deutericChallengeButton" onclick="enterDeutericChallenge(4)"><span style="font-size: 24px"><b>Challenge 4 (<span class="deutericChallengesBeaten">0</span>/3)</b></span><br><span class="deutericChallengeInfo"></span><br><span style="color: #4b8">Reward: Base point cap is increased</span></button>
+				</div>
+				<p style="color: #bbb">Deuteric challenges are completed upon performing a deuteric reset.<br>Hold shift to see current challenge boosts</p>
+				</center>
+			</div>
 		</div>
-		<script src="jquery-3.6.0.min.js"></script>
+		<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 		<script src="Mousetrap.js"></script>
-		<script src="break_eternity.js?v2=1"></script>
-		<script src="HyperNum.js?v1304=1"></script>
-		<script src="constants.js?v130=1"></script>
-		<script src="script.js?v1302=1"></script>
+		<script src="break_eternity.js"></script>
+		<script src="HyperNum.js?v1422=1"></script>
+		<script src="constants.js?v1422=1"></script>
+		<script src="script.js?v1422=1"></script>
 		<script>load(); if (!isDevVersion) setAutoSave()</script>
 	</div>
 	<!--客服 开始-->
@@ -382,4 +467,5 @@ var _hmt = _hmt || [];
   s.parentNode.insertBefore(hm, s);
 })();
 </script>    </div>
+
 </body>

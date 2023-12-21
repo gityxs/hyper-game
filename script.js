@@ -48,10 +48,11 @@ function format(ex, acc = 0, max = 9) {
 function reset() {
 	game = {
 		timeOfLastUpdate: Date.now(),
+		timePlayed: 0,
 		unlocks: 0,
 		achievementsAttained: [],
-		confirmations: [true, true, true, true, true, true, true],
-		autobuyers: [true, true],
+		confirmations: [true, true, true, true, true, true, true, true, true, true],
+		autobuyers: [true, true, true],
 		
 		number: new Decimal(0),
 		currentBase: 10,
@@ -85,6 +86,7 @@ function reset() {
 		vectorUpgradeCosts: [new Decimal(200), new Decimal(1000), new Decimal(1000), new Decimal(100000), new Decimal(1e12), new Decimal(1e15)],
 		
 		basePoints: new Decimal(0),
+		basePointMax: new Decimal(1000),
 		totalBasePoints: new Decimal(0),
 		inBasedverse: false,
 		basedverseBase: new Decimal(20),
@@ -135,15 +137,32 @@ function reset() {
 		divineCrystals: new Decimal(0),
 		divineUpgradeCosts: [new Decimal(100000), new Decimal(5e6)],
 		divineUpgradesBought: [new Decimal(0), new Decimal(0)],
+		
+		deuteric: new Decimal(0),
+		deutericToGet: new Decimal(0),
+		totalDeuteric: new Decimal(0),
+		timeThisDeuteric: 0,
+		recentDeuterics: [],
+		bestDeutericPerSecond: new Decimal(0),
+		deutericMilestonesAchieved: 0,
+		deuterium: new Decimal(0),
+		combinators: [new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0)],
+		combinatorsBought: [new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0)],
+		combinatorCosts: [new Decimal(1), new Decimal(1), new Decimal(2), new Decimal(4), new Decimal(8), new Decimal(16), new Decimal(32)],
+		
+		currentDeutericChallenge: 0,
+		deutericChallengesBeaten: [0, 0, 0, 0],
+		slogs: new Decimal(1),
 	}
 	currentTab = 1
 	hyperESubTab = 1
 	cascadeSubTab = 1
+	deutericSubTab = 1
 }
 
 //If the user confirms the hard reset, resets all variables, saves and refreshes the page
 function hardReset() {
-  if (confirm("A您确定要重置吗？ 你将失去一切！")) {
+  if (confirm("Are you sure you want to reset? You will lose everything!")) {
     reset()
     save()
     location.reload()
@@ -205,7 +224,7 @@ function loadGame(loadgame) {
   for (let i = 0; i < loadKeys.length; i++) { // Iterate through each key in the loadgame object
     if (loadgame[loadKeys[i]] != "undefined") { // Only process keys with defined values
       let thisKey = loadKeys[i];
-      if (typeof loadgame[thisKey] == "string" && !isNaN(parseFloat(loadgame[thisKey]))) { // If the value is a string that can be converted to a Decimal, do so
+      if (typeof loadgame[thisKey] == "string" && !new Decimal(loadgame[thisKey]).isNan()) { // If the value is a string that can be converted to a Decimal, do so
         game[thisKey] = new Decimal(loadgame[thisKey])
       }
       else if (Array.isArray(loadgame[thisKey]) && game[loadKeys[i]]) { // If the value is an array and the corresponding key exists in the game object
@@ -238,8 +257,8 @@ function loadGame(loadgame) {
 		$(".challengeButton").eq(5).css("display", "inline-block")
 		if (typeof game.currentChallengeGoal == "number") game.currentChallengeGoal = new Decimal(0)
 	}
-	if (game.vectorGainEnabled) {$("#vectorGainButton").html("Disable vector gain")}
-	else {$("#vectorGainButton").html("Enable vector gain")}
+	if (game.vectorGainEnabled) {$("#vectorGainButton").text("Disable vector gain")}
+	else {$("#vectorGainButton").text("Enable vector gain")}
 	if (game.unlocks >= 4) {
 		if (game.vectorUpgradeCosts[4].eq(0)) game.vectorUpgradeCosts[4] = new Decimal(Infinity) //Vector upgrade 5 cost sets itself to 0 on load if it was Infinity
 		$(".hyperESubTabButton").eq(5).css("display", "inline-block")
@@ -247,6 +266,12 @@ function loadGame(loadgame) {
 		$(".vectorUpgrade").eq(5).css("display", "inline-block")
 		$(".confirmationButton").eq(4).css("display", "block")
 		$(".confirmationButton").eq(5).css("display", "block")
+		if (game.totalBasePoints.gt(game.basePointMax)) {
+			game.totalBasePoints = new Decimal(game.basePointMax)
+			$("#basePointCap").text(" (max)")
+			respecBasePoints()
+			game.basePoints = new Decimal(game.basePointMax)
+		}
 	}
 	if (game.unlocks >= 5) {
 		$(".tabButton").eq(1).css("display", "inline-block")
@@ -261,7 +286,7 @@ function loadGame(loadgame) {
 		$(".cascadeSubTabButton").eq(3).css("display", "inline-block")
 	}
 	if (game.postCascade) {
-		$("#surpassCascadeButton").html("You have surpassed cascade!")
+		$("#surpassCascadeButton").text("You have surpassed cascade!")
 		$("#surpassCascadeButton").css("color", "#e72")
 		for (let i=1;i<postCascadeUpgradeCosts.length+1;i++) {
 			if (game.postCascadeUpgradesBought[i].eq(1)) {
@@ -276,12 +301,13 @@ function loadGame(loadgame) {
 	if (game.unlocks >= 7) {
 		$(".cascadeSubTabButton").eq(4).css("display", "inline-block")
 		for (let i=0;i<5;i++) {
-			if (game.flavoursUnlocked > i) {
+			if (game.flavoursUnlocked > i || game.unlocks >= 11) {
 				$(".flavourUnlockButton").eq(i).css("display", "none")
 				$(".flavourButton").eq(i).css("display", "block")
 				$(".flavourText").eq(i).css("display", "block")
 			}
 		}
+		if (game.totalDeuteric.gt(0) && game.flavoursUnlocked == 0) game.flavoursUnlocked = 5
 	}
 	if (game.unlocks >= 8) {
 		$(".cascadeSubTabButton").eq(5).css("display", "inline-block")
@@ -306,15 +332,24 @@ function loadGame(loadgame) {
 	}
 	if (game.unlocks >= 11) {
 		$(".tabButton").eq(2).css("display", "inline-block")
+		$(".confirmationButton").eq(7).css("display", "block")
+	}
+	if (game.deutericMilestonesAchieved >= 10 && game.unlocks < 12) game.unlocks = 12
+	if (game.unlocks >= 12) {
+		$(".deutericSubTabButton").eq(3).css("display", "inline-block")
+		if (game.currentDeutericChallenge == 4) $("#slogsText").css("display", "block")
+		$(".confirmationButton").eq(8).css("display", "block")
+		$(".confirmationButton").eq(9).css("display", "block")
+		if (game.deutericMilestonesAchieved >= 17) $("#layerAutobuyer").css("display", "block")
 	}
 	
 	for (let i=0;i<game.autobuyers.length;i++) {
 		if (game.autobuyers[i]) {
-			$(".autobuyer").eq(i).html("On")
+			$(".autobuyer").eq(i).text("On")
 			$(".autobuyer").eq(i).css("color", "#0b0")
 		}
 		else {
-			$(".autobuyer").eq(i).html("Off")
+			$(".autobuyer").eq(i).text("Off")
 			$(".autobuyer").eq(i).css("color", "#b22")
 		}
 	}
@@ -322,9 +357,11 @@ function loadGame(loadgame) {
 
 function updateVisuals() {
 	$("#number").html(toHyperNum(game.number,game.currentBase,true) + " <span style='color: #888'>(" + game.currentBase + ")</span>")
+	//Slogs (Deuteric shallenge 4)
+	if (game.currentDeutericChallenge == 4) $("#slogs").text(format(game.slogs, 2))
 	if (currentTab==1) { //Number tab
-		$("#hyperpoints").html(format(game.hyperpoints))
-		$("#hyperpointsToGet").html(format(game.hyperpointsToGet) + " hyper-points")
+		$("#hyperpoints").text(format(game.hyperpoints))
+		$("#hyperpointsToGet").text(format(game.hyperpointsToGet) + " hyper-points")
 		if (hyperESubTab==1) {
 			//Multiplier button text
 			if (keysPressed[16]) { //Player is holding shift
@@ -337,8 +374,8 @@ function updateVisuals() {
 			//Determines whether multiplier button text is green (buyable) or not
 			if (game.hyperpoints.gte(game.multiplierCost) && game.currentChallenge != 6) {$("#multiplierButton").css("color", "#0b0")}
 			else {$("#multiplierButton").css("color", "#c94")}
-			$("#autoclickers").html(format(game.autoclickers.floor()))
-			$("#autoclickerEffect").html(format(game.autoclickerEffect))
+			$("#autoclickers").text(format(game.autoclickers.floor()))
+			$("#autoclickerEffect").text(format(game.autoclickerEffect))
 		}
 		else if (hyperESubTab==2) { //Factors tab
 			for (let i=0;i<6;i++) {
@@ -366,21 +403,21 @@ function updateVisuals() {
 				}
 			}
 			if (game.autobuyers[0]) { //Factor autobuyer
-				$(".autobuyer").eq(0).html("On")
+				$(".autobuyer").eq(0).text("On")
 				$(".autobuyer").eq(0).css("color", "#0b0")
 			}
 			else {
-				$(".autobuyer").eq(0).html("Off")
+				$(".autobuyer").eq(0).text("Off")
 				$(".autobuyer").eq(0).css("color", "#b22")
 			}
 			//Base shift requirement text
-			if (game.currentChallenge == 3) {$("#baseShiftRequirement").html("Infinity")}
-			else {$("#baseShiftRequirement").html(format(baseShiftCosts[game.baseShifts]))}
+			if (game.currentChallenge == 3) {$("#baseShiftRequirement").text("Infinity")}
+			else {$("#baseShiftRequirement").text(format(baseShiftCosts[game.baseShifts]))}
 			//Determines whether base shift requirement text is green or not
 			if (game.currentChallenge != 3 && game.hyperpoints.gte(baseShiftCosts[game.baseShifts])) {$("#baseShiftButton").css("color", "#2c2")}
 			else {$("#baseShiftButton").css("color", "#888")}
-			if (game.currentBase <= 5) {$("#clustersToGet").html(format(game.clustersToGet))}
-			else {$("#clustersToGet").html(format(game.clusterLevel.add(1)))}
+			if (game.currentBase <= 5) {$("#clustersToGet").text(format(game.clustersToGet))}
+			else {$("#clustersToGet").text(format(game.clusterLevel.add(1)))}
 			//Determines requirements for next cluster(s)
 			let clusterFirstRequirement = new Decimal(4).pow(new Decimal(8).mul(game.clusterLevel.add(1)).add(9)) //Requirement to get first available cluster
 			let clusterLevelCanReach = game.number.add(1).div(4**9).log(4).div(8).floor() //Number of possible clusters
@@ -389,7 +426,7 @@ function updateVisuals() {
 			if (game.currentBase <= 5) {
 				if (game.number.gte(clusterFirstRequirement)) {
 					if (!game.postCascade && clusterNextRequirement.gt(new Decimal(4).pow(257))) {
-						$("#clusterRequirement").html("Requires ∞ in base 5")
+						$("#clusterRequirement").text("Requires ∞ in base 5")
 						$("#clusterProgressBarInner").css("width", "0")
 					}
 					else {
@@ -400,7 +437,7 @@ function updateVisuals() {
 				} 
 				else {
 					if (!game.postCascade && clusterFirstRequirement.gt(new Decimal(4).pow(257))) {
-						$("#clusterRequirement").html("Requires ∞ in base 5")
+						$("#clusterRequirement").text("Requires ∞ in base 5")
 						$("#clusterProgressBarInner").css("width", "0")
 					}
 					else {
@@ -410,7 +447,7 @@ function updateVisuals() {
 				}
 			}
 			else {
-				if (!game.postCascade && clusterFirstRequirement.gt(new Decimal(4).pow(257))) {$("#clusterRequirement").html("Requires ∞ in base 5")}
+				if (!game.postCascade && clusterFirstRequirement.gt(new Decimal(4).pow(257))) {$("#clusterRequirement").text("Requires ∞ in base 5")}
 				else {$("#clusterRequirement").html("Requires " + toHyperNum(clusterFirstRequirement.round().mul(1.1), 5, true) + " in base 5")}
 				$("#clusterProgressBarInner").css("width", "0")
 			}
@@ -420,11 +457,11 @@ function updateVisuals() {
 			
 		}
 		else if (hyperESubTab==3) { //Clusters tab
-			$("#clusters").html(format(game.clusters))
-			$("#totalClusters").html(format(game.totalClusters))
+			$("#clusters").text(format(game.clusters))
+			$("#totalClusters").text(format(game.totalClusters))
 			//Cluster upgrade text
 			if (keysPressed[16]) { //Player is holding shift
-				for (let i=0;i<12;i++) $(".clusterUpgrade").eq(i).html(((i%3)+1) + "x" + (Math.floor(i/3)+1))
+				for (let i=0;i<12;i++) $(".clusterUpgrade").eq(i).text(((i%3)+1) + "x" + (Math.floor(i/3)+1))
 				$(".clusterUpgrade").eq(4).html("2x2<br>Current effect: x" + format(game.clusters.add(1), 1))
 				$(".clusterUpgrade").eq(5).html("3x2<br>Current effect: x" + format(new Decimal(2.5).pow(game.baseShifts), 1))
 				$(".clusterUpgrade").eq(9).html("1x4<br>Current effect: x" + format(game.vectors.add(1).log10().add(1), 2))
@@ -450,68 +487,72 @@ function updateVisuals() {
 			else {$("#challengeProgressBarInner").css("width", "0")}
 		}
 		else if (hyperESubTab==5) { //Vectors tab
-			$("#vectors").html(format(game.vectors))
-			$("#vectorsPerSecond").html(format(game.vectorsPerSecond))
-			if (game.cascadeMilestonesAchieved < 2 || game.currentChallenge == 5) {$("#vectorEffect").html(format(game.vectors.add(1)))}
-			else {$("#vectorEffect").html("1")}
+			$("#vectors").text(format(game.vectors))
+			$("#vectorsPerSecond").text(format(game.vectorsPerSecond))
+			if ((game.cascadeMilestonesAchieved < 2 || game.currentChallenge == 5) && game.deutericMilestonesAchieved < 12) {$("#vectorEffect").text(format(game.vectors.add(1)))}
+			else {$("#vectorEffect").text("1")}
 			//Vector upgrade text
 			for (let i=0;i<6;i++) {
-				$(".vectorUpgradeAmount").eq(i).html(format(game.vectorUpgradesBought[i]))
-				$(".vectorUpgradeCost").eq(i).html(format(game.vectorUpgradeCosts[i]))
+				$(".vectorUpgradeAmount").eq(i).text(format(game.vectorUpgradesBought[i]))
+				$(".vectorUpgradeCost").eq(i).text(format(game.vectorUpgradeCosts[i]))
 			}
-			$(".vectorUpgradeEffect").eq(0).html(format(game.totalClusters.div(100).add(1).pow(game.vectorUpgradesBought[1].pow(0.8)),2))
-			if (game.shadowMilestonesAchieved >= 5) {$(".vectorUpgradeEffect").eq(1).html(format(game.vectorUpgradesBought[2].pow(5).add(1), 2))}
-			else if (game.shadowMilestonesAchieved >= 1) {$(".vectorUpgradeEffect").eq(1).html(format(game.vectorUpgradesBought[2].pow(3).add(1), 2))}
-			else {$(".vectorUpgradeEffect").eq(1).html(format(game.vectorUpgradesBought[2].pow(1.5).add(1), 2))}
-			$(".vectorUpgradeEffect").eq(2).html(format(Decimal.min(new Decimal(100).pow(game.vectorUpgradesBought[3].pow(0.8)), 1e15)))
-			$(".vectorUpgradeEffect").eq(3).html(format(new Decimal(2).pow(game.vectorUpgradesBought[5].pow(0.8)), 2))
-			if (game.currentChallenge == 5) {$("#vectorResetButton").html("You cannot reset vectors in challenge 5!")}
-			else {$("#vectorResetButton").html("Reset vectors to 0")}
+			$(".vectorUpgradeEffect").eq(0).text(format(game.totalClusters.div(100).add(1).pow(game.vectorUpgradesBought[1].pow(0.8)),2))
+			if (game.shadowMilestonesAchieved >= 5) {$(".vectorUpgradeEffect").eq(1).text(format(game.vectorUpgradesBought[2].pow(5).add(1), 2))}
+			else if (game.shadowMilestonesAchieved >= 1) {$(".vectorUpgradeEffect").eq(1).text(format(game.vectorUpgradesBought[2].pow(3).add(1), 2))}
+			else {$(".vectorUpgradeEffect").eq(1).text(format(game.vectorUpgradesBought[2].pow(1.5).add(1), 2))}
+			$(".vectorUpgradeEffect").eq(2).text(format(Decimal.min(new Decimal(100).pow(game.vectorUpgradesBought[3].pow(0.8)), 1e15)))
+			$(".vectorUpgradeEffect").eq(3).text(format(new Decimal(2).pow(game.vectorUpgradesBought[5].pow(0.8)), 2))
+			if (game.currentChallenge == 5) {$("#vectorResetButton").text("You cannot reset vectors in challenge 5!")}
+			else {$("#vectorResetButton").text("Reset vectors to 0")}
 		}
 		else if (hyperESubTab==6) { //Base points tab
-			$("#basePoints").html(format(game.basePoints))
-			$("#totalBasePoints").html(format(game.totalBasePoints))
+			$("#basePoints").text(format(game.basePoints))
+			$("#totalBasePoints").text(format(game.totalBasePoints))
 			if (game.inBasedverse) {
 				let effectiveBase = game.basedverseBase.sub(1)
-				let basePointsCanGet = game.number.add(1).div(effectiveBase).log(effectiveBase).div(effectiveBase).floor()
+				let basePointsCanGet = game.number.add(1).div(effectiveBase).log(effectiveBase).div(effectiveBase).floor().min(game.basePointMax)
 				basePointsCanGet = Decimal.max(basePointsCanGet.sub(game.totalBasePoints), 0)
 				let nextBasePoint = new Decimal(effectiveBase).pow(new Decimal(effectiveBase).mul(basePointsCanGet.add(game.totalBasePoints).add(1)).add(1))
+				let lastBasePoint = new Decimal(effectiveBase).pow(new Decimal(effectiveBase).mul(basePointsCanGet.add(game.totalBasePoints)).add(1))
 				$("#basePointsText").html("You will gain " + format(basePointsCanGet) + " base points upon leaving now<br>Next at " + toHyperNum(nextBasePoint.mul(1.01), game.basedverseBase, true)) //The .mul(1.01) is due to HyperNum rounding issues
-				$("#basedverseButtonText").html("Exit")
+				$("#basedverseButtonText").text("Exit")
+				if (basePointsCanGet.gt(0)) {$("#basePointProgressBarInner").css("width", (game.number.add(1).div(lastBasePoint)).log10().div(nextBasePoint.div(lastBasePoint).log10()).mul(100).min(100).toNumber() + "%")}
+				else {$("#basePointProgressBarInner").css("width", game.number.add(1).log10().div(nextBasePoint.log10()).mul(100).min(100).toNumber() + "%")}
 			}
 			else {
-				$("#basePointsText").html("")
-				$("#basedverseButtonText").html("Enter")
+				$("#basePointsText").text("")
+				$("#basedverseButtonText").text("Enter")
+				$("#basePointProgressBarInner").css("width", "0")
 			}
-			$("#basedverseBase").html(format(game.basedverseBase))
-			$("#upBase").html(format(game.upBase))
-			$("#downBase").html(format(game.downBase))
+			$("#basedverseBase").text(format(game.basedverseBase))
+			$("#upBase").text(format(game.upBase))
+			$("#downBase").text(format(game.downBase))
 			let upBaseEffect = new Decimal(2.5).pow(game.upBase.pow(0.8))
 			upBaseEffect = upBaseEffect.mul(new Decimal(2).pow(game.vectorUpgradesBought[5].pow(0.8)))
 			if (game.postCascadeUpgradesBought[1].eq(1)) upBaseEffect = upBaseEffect.mul(Decimal.min(new Decimal(game.timeThisCascade).pow(0.7).div(3).add(1), 300))
-			$("#upBaseEffect").html(format(upBaseEffect,2))
+			$("#upBaseEffect").text(format(upBaseEffect,2))
 			let downBaseEffect = new Decimal(2).pow(game.downBase.pow(0.8))
 			downBaseEffect = downBaseEffect.mul(new Decimal(2).pow(game.vectorUpgradesBought[5].pow(0.8)))
 			if (game.postCascadeUpgradesBought[1].eq(1)) downBaseEffect = downBaseEffect.mul(Decimal.min(new Decimal(game.timeThisCascade).pow(0.7).div(3).add(1), 300))
-			$("#downBaseEffect").html(format(downBaseEffect,2))
+			$("#downBaseEffect").text(format(downBaseEffect,2))
 		}
 	}
 	else if (currentTab==2) { //Cascade tab
-		$("#cascades").html(format(game.cascades))
+		$("#cascades").text(format(game.cascades))
 		let cBase = new Decimal(game.currentBase-1)
 		if (game.number.gte(cBase.pow(cBase.pow(cBase).add(1)))) {
-			if (game.postCascade) {$("#cascadeButton").html("Reset previous progress to gain " + format(game.cascadesToGet) + " cascades (C)")}
-			else {$("#cascadeButton").html("Reset previous progress to gain a cascade (C)")}
+			if (game.postCascade) {$("#cascadeButton").text("Reset previous progress to gain " + format(game.cascadesToGet) + " cascades (C)")}
+			else {$("#cascadeButton").text("Reset previous progress to gain a cascade (C)")}
 			$("#cascadeButton").css("color", "#0d0")
 		}
 		else {
-			$("#cascadeButton").html("Reach 1Ex#^#x to cascade")
+			$("#cascadeButton").html("Reach 1Ex#<sup>#</sup>x to cascade")
 			$("#cascadeButton").css("color", "#eb2")
 		}
 		if (cascadeSubTab==1) { //Cascade tab
-			$("#cascadePower").html(format(game.cascadePower))
-			if (game.cascadeMilestonesAchieved >= 6) {$("#cascadePowerEffect").html(format(game.cascadePower.pow(0.2).add(1), 2))}
-			else {$("#cascadePowerEffect").html(format(game.cascadePower.pow(0.12).add(1), 2))}
+			$("#cascadePower").text(format(game.cascadePower))
+			if (game.cascadeMilestonesAchieved >= 6) {$("#cascadePowerEffect").text(format(game.cascadePower.pow(0.2).add(1), 2))}
+			else {$("#cascadePowerEffect").text(format(game.cascadePower.pow(0.12).add(1), 2))}
 			if (keysPressed[16]) { //Player is holding shift
 				$(".layerButton").eq(0).html("Power producer [" + format(game.layers[0]) + ", " + format(game.layersBought[0]) + "]<br>Costs " + format(game.layerCosts[0]) + " cascades")
 			}
@@ -532,83 +573,151 @@ function updateVisuals() {
 				if (game.cascades.gte(game.layerCosts[i]) && (i==0 || game.cascadeMilestonesAchieved >= 3)) {$(".layerButton").eq(i).css("color", "#0d0")}
 				else {$(".layerButton").eq(i).css("color", "#eb2")}
 			}
+			if (game.autobuyers[2]) { //Layer autobuyer
+				$(".autobuyer").eq(2).text("On")
+				$(".autobuyer").eq(2).css("color", "#0b0")
+			}
+			else {
+				$(".autobuyer").eq(2).text("Off")
+				$(".autobuyer").eq(2).css("color", "#b22")
+			}
+		}
+		else if (cascadeSubTab==2) { //Recent tab
+			$("#thisCascade").html("Time this cascade: " + numberToTime(game.timeThisCascade) + ", " + format(game.cascadesToGet) + " cascades to get (" + format(game.cascadesToGet.div(Math.max(game.timeThisCascade,0.01)),2) + "/s)")
 		}
 		else if (cascadeSubTab==3) { //Milestone tab
 			if (game.unlocks >= 8) {
-				$(".shadowMilestoneEffect").eq(0).html(format(game.flavours[0].add(1).log10().div(5).add(1), 2))
-				$(".shadowMilestoneEffect").eq(1).html(format(Decimal.min(Decimal.max(game.bloodCrystals.pow(0.5), 1), 10000), 2))
-				$(".shadowMilestoneEffect").eq(2).html(format(Decimal.max(game.shadowCrystals.pow(0.1), 1), 2))
+				$(".shadowMilestoneEffect").eq(0).text(format(game.flavours[0].add(1).log10().div(5).add(1), 2))
+				$(".shadowMilestoneEffect").eq(1).text(format(Decimal.min(Decimal.max(game.bloodCrystals.pow(0.5), 1), 10000), 2))
+				$(".shadowMilestoneEffect").eq(2).text(format(Decimal.max(game.shadowCrystals.pow(0.1), 1), 2))
 			}
 		}
 		else if (cascadeSubTab==4) { //Post-cascade tab
-			$("#bestCascadesPerSecond").html(format(game.bestCascadesPerSecond.div(10), 2))
-			$(".postCascadeUpgradeBought").eq(0).html(format(game.postCascadeUpgradesBought[0]))
-			$(".postCascadeUpgradeCost").eq(0).html(format(game.postCascadeUpgrade1Cost))
+			$("#bestCascadesPerSecond").text(format(game.bestCascadesPerSecond.div(10), 2))
+			$(".postCascadeUpgradeBought").eq(0).text(format(game.postCascadeUpgradesBought[0]))
+			$(".postCascadeUpgradeCost").eq(0).text(format(game.postCascadeUpgrade1Cost))
 			let postCascade1UpgradeEffect = new Decimal(2).pow(game.postCascadeUpgradesBought[0]).round()
 			if (postCascade1UpgradeEffect.gt(1e15)) {
 				postCascade1UpgradeEffect = postCascade1UpgradeEffect.mul(1e15).pow(0.5)
-				$("#postCascadeUpgrade1Softcap").html(" (softcapped)")
+				$("#postCascadeUpgrade1Softcap").text(" (softcapped)")
 			}
-			else {$("#postCascadeUpgrade1Softcap").html("")}
-			$(".postCascadeUpgradeEffect").eq(0).html(format(postCascade1UpgradeEffect)) //Post-cascade upgrade 1 effect
-			$(".postCascadeUpgradeEffect").eq(1).html(format(Decimal.min(new Decimal(game.timeThisCascade).pow(0.7).div(3).add(1), 300), 2)) //Post-cascade upgrade 2 effect, capped at x100
-			$(".postCascadeUpgradeEffect").eq(2).html(format(game.clusters.pow(0.2).div(2).add(1), 2)) //Post-cascade upgrade 4 effect
+			else {$("#postCascadeUpgrade1Softcap").text("")}
+			$(".postCascadeUpgradeEffect").eq(0).text(format(postCascade1UpgradeEffect)) //Post-cascade upgrade 1 effect
+			$(".postCascadeUpgradeEffect").eq(1).text(format(Decimal.min(new Decimal(game.timeThisCascade).pow(0.7).div(3).add(1), 300), 2)) //Post-cascade upgrade 2 effect, capped at x100
+			$(".postCascadeUpgradeEffect").eq(2).text(format(game.clusters.pow(0.2).div(2).add(1), 2)) //Post-cascade upgrade 4 effect
 		}
 		else if (cascadeSubTab==5) { //Flavour tab
-			for (let i=0;i<5;i++) $(".flavour").eq(i).html(format(game.flavours[i]))
-			$(".flavourToGet").eq(0).html(format(game.cascades.div(1000).mul(game.flavourMultipliers[0]).floor()))
+			for (let i=0;i<5;i++) $(".flavour").eq(i).text(format(game.flavours[i]))
+			$(".flavourToGet").eq(0).text(format(game.cascades.div(1000).mul(game.flavourMultipliers[0]).floor()))
 			//I need to condense these into for loops or a switch at some point
-			$(".flavourEffect").eq(0).html(format(game.flavours[0].add(1).log10().div(10).add(1).pow(2), 2))
-			if (game.shadowMilestonesAchieved >= 4) {$(".flavourEffect").eq(1).html(format(game.flavours[0].add(1).log10().div(5).add(1).pow(2.5), 2))}
-			else {$(".flavourEffect").eq(1).html(format(game.flavours[0].add(1).log10().div(10).add(1).pow(2), 2))}
-			$(".flavourEffect").eq(2).html(format(Decimal.min(game.flavours[1].pow(0.7).add(1), 50), 2))
-			$(".flavourEffect").eq(3).html(format(game.flavours[1].add(1).log10().div(2).add(1), 2))
-			$(".flavourEffect").eq(4).html(format(Decimal.min(game.flavours[2].pow(0.6).add(1), 50), 2))
-			$(".flavourEffect").eq(5).html(format(game.flavours[2].add(1).log10().div(2).add(1), 2))
-			$(".flavourEffect").eq(6).html(format(Decimal.min(game.flavours[3].pow(0.5).add(1), 50), 2))
-			$(".flavourEffect").eq(7).html(format(game.flavours[3].add(1).log10().div(2).add(1), 2))
-			$(".flavourEffect").eq(8).html(format(Decimal.min(game.flavours[4].pow(0.4).add(1), 50), 2))
-			$(".flavourEffect").eq(9).html(format(game.flavours[4].add(1).log10().div(2).add(1), 2))
+			if (game.shadowMilestonesAchieved >= 10) {$(".flavourEffect").eq(0).text(format(game.flavours[0].add(1).log10().div(10).add(1).pow(2.3), 2))}
+			else {$(".flavourEffect").eq(0).text(format(game.flavours[0].add(1).log10().div(10).add(1).pow(2), 2))}
+			if (game.shadowMilestonesAchieved >= 4) {$(".flavourEffect").eq(1).text(format(game.flavours[0].add(1).log10().div(5).add(1).pow(2.5), 2))}
+			else {$(".flavourEffect").eq(1).text(format(game.flavours[0].add(1).log10().div(10).add(1).pow(2), 2))}
+			$(".flavourEffect").eq(2).text(format(Decimal.min(game.flavours[1].pow(0.7).add(1), 50), 2))
+			$(".flavourEffect").eq(3).text(format(game.flavours[1].add(1).log10().div(2).add(1), 2))
+			$(".flavourEffect").eq(4).text(format(Decimal.min(game.flavours[2].pow(0.6).add(1), 50), 2))
+			$(".flavourEffect").eq(5).text(format(game.flavours[2].add(1).log10().div(2).add(1), 2))
+			$(".flavourEffect").eq(6).text(format(Decimal.min(game.flavours[3].pow(0.5).add(1), 50), 2))
+			$(".flavourEffect").eq(7).text(format(game.flavours[3].add(1).log10().div(2).add(1), 2))
+			$(".flavourEffect").eq(8).text(format(Decimal.min(game.flavours[4].pow(0.4).add(1), 50), 2))
+			$(".flavourEffect").eq(9).text(format(game.flavours[4].add(1).log10().div(2).add(1), 2))
 			for (let i=1;i<4;i++) {
-				$(".flavourToGet").eq(i).html(format(game.flavours[i-1].div(1000).mul(game.flavourMultipliers[i]).floor()))
-				$(".flavourCost").eq(i).html(format(new Decimal(1000).div(game.flavourMultipliers[i])))
+				$(".flavourToGet").eq(i).text(format(game.flavours[i-1].div(1000).mul(game.flavourMultipliers[i]).floor()))
+				$(".flavourCost").eq(i).text(format(new Decimal(1000).div(game.flavourMultipliers[i])))
 			}
-			$(".flavourCost").eq(0).html(format(new Decimal(1000).div(game.flavourMultipliers[0])))
-			$(".flavourToGet").eq(4).html(format(game.flavours[3].div(1000).floor()))
+			$(".flavourCost").eq(0).text(format(new Decimal(1000).div(game.flavourMultipliers[0])))
+			$(".flavourToGet").eq(4).text(format(game.flavours[3].div(1000).floor()))
 		}
 		else if (cascadeSubTab==6) {
-			$("#shadowPower").html(format(game.shadowPower))
-			$("#shadowCrystals").html(format(game.shadowCrystals))
-			$("#shadowCrystalPoint").html(format(game.shadowCrystalPoint))
-			$("#shadowCrystalEffect").html(format(Decimal.min(game.shadowCrystals.pow(0.5).mul(4).add(1), 1e6), 2))
-			$("#shadowPowerPerSecond").html(format(game.shadowPowerPerSecond))
+			$("#shadowPower").text(format(game.shadowPower))
+			$("#shadowCrystals").text(format(game.shadowCrystals))
+			$("#shadowCrystalPoint").text(format(game.shadowCrystalPoint))
+			if (game.deutericMilestonesAchieved >= 3) {$("#shadowCrystalEffect").text(format(game.shadowCrystals.pow(0.5).mul(4).add(1).min(new Decimal(1e20).mul(new Decimal(1e8).pow(game.deutericChallengesBeaten[0]))), 2))}
+			else {$("#shadowCrystalEffect").text(format(game.shadowCrystals.pow(0.5).mul(4).add(1).min(1e12), 2))}
+			$("#shadowPowerPerSecond").text(format(game.shadowPowerPerSecond))
 			if (game.shadowPowerPerSecond.gt(game.shadowCrystalPoint.mul(20))) {$("#shadowPowerBarInner").css("width", "100%")}
-			else {$("#shadowPowerBarInner").css("width", (modulo(game.shadowPower,game.shadowCrystalPoint) / (game.shadowCrystalPoint.div(100))) + "%")}
-			for (let i=0;i<2;i++) $(".shadowUpgradeCost").eq(i).html(format(game.shadowUpgradeCosts[i]))
-			$(".shadowUpgradeEffect").eq(0).html(format(new Decimal(2).pow(game.shadowUpgradesBought[0]), 2))
+			else {$("#shadowPowerBarInner").css("width", (modulo(game.shadowPower,game.shadowCrystalPoint).div(game.shadowCrystalPoint.div(100))).min(100).toNumber() + "%")}
+			for (let i=0;i<2;i++) $(".shadowUpgradeCost").eq(i).text(format(game.shadowUpgradeCosts[i]))
+			$(".shadowUpgradeEffect").eq(0).text(format(new Decimal(2).pow(game.shadowUpgradesBought[0]), 2))
 			if (game.unlocks >= 9) {
-				$("#bloodPower").html(format(game.bloodPower))
-				$("#bloodCrystals").html(format(game.bloodCrystals))
-				$("#bloodCrystalPoint").html(format(game.bloodCrystalPoint))
-				$(".bloodCrystalEffect").eq(0).html(format(game.bloodCrystals.pow(0.4).add(1), 2))
-				$(".bloodCrystalEffect").eq(1).html(format(Decimal.min(game.bloodCrystals.pow(0.5).mul(4).add(1), 1e6), 2))
-				$("#bloodPowerPerSecond").html(format(game.bloodPowerPerSecond))
+				$("#bloodPower").text(format(game.bloodPower))
+				$("#bloodCrystals").text(format(game.bloodCrystals))
+				$("#bloodCrystalPoint").text(format(game.bloodCrystalPoint))
+				$(".bloodCrystalEffect").eq(0).text(format(game.bloodCrystals.pow(0.4).add(1), 2))
+				if (game.deutericMilestonesAchieved >= 5) {$(".bloodCrystalEffect").eq(1).text(format(game.bloodCrystals.pow(0.5).mul(4).add(1).min(new Decimal(1e20).mul(new Decimal(1e8).pow(game.deutericChallengesBeaten[1]))), 2))}
+				else {$(".bloodCrystalEffect").eq(1).text(format(game.bloodCrystals.pow(0.5).mul(4).add(1).min(1e12), 2))}
+				$("#bloodPowerPerSecond").text(format(game.bloodPowerPerSecond))
 				if (game.bloodPowerPerSecond.gt(game.bloodCrystalPoint.mul(20))) {$("#bloodPowerBarInner").css("width", "100%")}
-				else {$("#bloodPowerBarInner").css("width", (modulo(game.bloodPower,game.bloodCrystalPoint) / (game.bloodCrystalPoint.div(100))) + "%")}
-				for (let i=0;i<2;i++) $(".bloodUpgradeCost").eq(i).html(format(game.bloodUpgradeCosts[i]))
-				$(".bloodUpgradeEffect").eq(0).html(format(new Decimal(2).pow(game.bloodUpgradesBought[0]), 2))
+				else {$("#bloodPowerBarInner").css("width", (modulo(game.bloodPower,game.bloodCrystalPoint).div(game.bloodCrystalPoint.div(100))).min(100).toNumber() + "%")}
+				for (let i=0;i<2;i++) $(".bloodUpgradeCost").eq(i).text(format(game.bloodUpgradeCosts[i]))
+				$(".bloodUpgradeEffect").eq(0).text(format(new Decimal(2).pow(game.bloodUpgradesBought[0]), 2))
 			}
 			if (game.unlocks >= 10) {
-				$("#divinePower").html(format(game.divinePower))
-				$("#divineCrystals").html(format(game.divineCrystals))
-				$("#divineCrystalPoint").html(format(game.divineCrystalPoint))
-				$(".divineCrystalEffect").eq(0).html(format(game.divineCrystals.pow(0.4).add(1), 2))
-				$(".divineCrystalEffect").eq(1).html(format(Decimal.min(game.divineCrystals.pow(0.5).mul(4).add(1), 1e6), 2))
-				$("#divinePowerPerSecond").html(format(game.divinePowerPerSecond))
+				$("#divinePower").text(format(game.divinePower))
+				$("#divineCrystals").text(format(game.divineCrystals))
+				$("#divineCrystalPoint").text(format(game.divineCrystalPoint))
+				$(".divineCrystalEffect").eq(0).text(format(game.divineCrystals.pow(0.4).add(1), 2))
+				if (game.deutericMilestonesAchieved >= 7) {$(".divineCrystalEffect").eq(1).text(format(game.divineCrystals.pow(0.5).mul(4).add(1).min(new Decimal(1e20).mul(new Decimal(1e8).pow(game.deutericChallengesBeaten[2]))), 2))}
+				else {$(".divineCrystalEffect").eq(1).text(format(game.divineCrystals.pow(0.5).mul(4).add(1).min(1e12), 2))}
+				$("#divinePowerPerSecond").text(format(game.divinePowerPerSecond))
 				if (game.divinePowerPerSecond.gt(game.divineCrystalPoint.mul(20))) {$("#divinePowerBarInner").css("width", "100%")}
-				else {$("#divinePowerBarInner").css("width", (modulo(game.divinePower,game.divineCrystalPoint) / (game.divineCrystalPoint.div(100))) + "%")}
-				for (let i=0;i<2;i++) $(".divineUpgradeCost").eq(i).html(format(game.divineUpgradeCosts[i]))
-				$(".divineUpgradeEffect").eq(0).html(format(new Decimal(2).pow(game.divineUpgradesBought[0]), 2))
+				else {$("#divinePowerBarInner").css("width", (modulo(game.divinePower,game.divineCrystalPoint).div(game.divineCrystalPoint.div(100))).min(100).toNumber() + "%")}
+				for (let i=0;i<2;i++) $(".divineUpgradeCost").eq(i).text(format(game.divineUpgradeCosts[i]))
+				$(".divineUpgradeEffect").eq(0).text(format(new Decimal(2).pow(game.divineUpgradesBought[0]), 2))
+			}
+		}
+	}
+	else if (currentTab==5) { //Deuteric tab
+		$("#deuteric").text(format(game.deuteric))
+		$("#totalDeuteric").text(format(game.totalDeuteric))
+		let cBase = new Decimal(game.currentBase-1)
+		if (game.number.gte(cBase.pow(cBase.pow(cBase.mul(2).add(1)).add(1)))) {
+			$("#deutericButton").text("Reset previous progress to gain " + format(game.deutericToGet) + " deuteric (D)")
+			$("#deutericButton").css("color", "#0d0")
+		}
+		else {
+			$("#deutericButton").html("Reach 1Ex#<sup>#</sup>*#<sup>#</sup>x to gain deuteric")
+			$("#deutericButton").css("color", "#88d")
+		}
+		if (game.totalDeuteric.eq(0)) {$("#firstDeutericNote").css("display", "block")}
+		else {$("#firstDeutericNote").css("display", "none")}
+		if (deutericSubTab==1) { //Deuteric tab
+			$("#deuterium").text(format(game.deuterium))
+			if (game.deutericMilestonesAchieved >= 13) {$("#deuteriumEffect").text(format(game.deuterium.pow(0.15).div(1.5).add(1).pow(2), 2))}
+			else {$("#deuteriumEffect").text(format(game.deuterium.pow(0.15).div(1.5).add(1), 2))}
+			if (keysPressed[16]) { //Player is holding shift
+				$(".combinatorButton").eq(0).html("Deuterium producer [" + format(game.combinators[0]) + ", " + format(game.combinatorsBought[0]) + "]<br>Costs " + format(game.combinatorCosts[0]) + " deuteric")
+			}
+			else { //Player is not holding shift
+				$(".combinatorButton").eq(0).html("Deuterium producer [" + format(game.combinators[0]) + "]<br>Costs " + format(game.combinatorCosts[0]) + " deuteric")
+			}
+			for (let i=1;i<7;i++) {
+				if (keysPressed[16]) { //Player is holding shift
+					if (game.deutericMilestonesAchieved >= 2) {$(".combinatorButton").eq(i).html(factorNames[i-1] + " combinator [" + format(game.combinators[i]) + ", " + format(game.combinatorsBought[i]) + "]<br>Costs " + format(game.combinatorCosts[i]) + " deuteric")}
+					else {$(".combinatorButton").eq(i).html(factorNames[i-1] + " combinator [" + format(game.combinators[i]) + ", " + format(game.combinatorsBought[i]) + "]<br>Locked!")}
+				}
+				else { //Player is not holding shift
+					if (game.deutericMilestonesAchieved >= 2) {$(".combinatorButton").eq(i).html(factorNames[i-1] + " combinator [" + format(game.combinators[i]) + "]<br>Costs " + format(game.combinatorCosts[i]) + " deuteric")}
+					else {$(".combinatorButton").eq(i).html(factorNames[i-1] + " combinator [" + format(game.combinators[i]) + "]<br>Locked!")}
+				}
+			}
+			for (let i=0;i<7;i++) {
+				if (game.deuteric.gte(game.combinatorCosts[i]) && (i==0 || game.deutericMilestonesAchieved >= 2)) {$(".combinatorButton").eq(i).css("color", "#0d0")}
+				else {$(".combinatorButton").eq(i).css("color", "#88d")}
+			}
+		}
+		else if (deutericSubTab==2) { //Recent tab
+			$("#thisDeuteric").html("Time this deuteric: " + numberToTime(game.timeThisDeuteric) + ", " + format(game.deutericToGet) + " deuteric to get (" + format(game.deutericToGet.div(Math.max(game.timeThisDeuteric,0.01)),2) + "/s)")
+		}
+		else if (deutericSubTab == 4) { //Challenges tab
+			//Challenge info text
+			if (keysPressed[16]) { //Player is holding shift
+				for (let i=0;i<3;i++) $(".deutericChallengeInfo").eq(i).html("Current effect: x" + format(new Decimal(1e8).pow(game.deutericChallengesBeaten[i])))
+				$(".deutericChallengeInfo").eq(3).html("Current effect: x" + format(game.deutericChallengesBeaten[3]+1, 2))
+			}
+			else { //Player is not holding shift
+				for (let i=0;i<4;i++) $(".deutericChallengeInfo").eq(i).html(deutericChallengeInfos[i][game.deutericChallengesBeaten[i]])
 			}
 		}
 	}
@@ -616,8 +725,9 @@ function updateVisuals() {
 
 function update() {
 	//Time multiplier to multiply resources based on time since last update
-	let timeMultiplier = 0.001 * (Date.now() - game.timeOfLastUpdate)
+	let timeMultiplier = Math.max(0.001 * (Date.now() - game.timeOfLastUpdate), 0.001)
 	
+	game.hyperpointsToGet = game.number.floor()
 	if (game.hyperpoints.lt(0)) game.hyperpoints = new Decimal(0)
 	if (game.clusterUpgradesBought[8] || game.cascadeMilestonesAchieved >= 9) game.hyperpoints = game.hyperpoints.add(new Decimal(100).mul(timeMultiplier)) //Cluster upgrade 9 effect
 	if (game.postCascadeUpgradesBought[5].eq(1)) game.hyperpoints = game.hyperpoints.add(game.hyperpointsToGet.mul(timeMultiplier))
@@ -644,7 +754,7 @@ function update() {
 		if (game.clusterUpgradesBought[5]) factorMultipliers[i] = factorMultipliers[i].mul(new Decimal(2.5).pow(game.baseShifts)) //Cluster upgrade 6 effect
 		if (game.currentChallenge == 2) factorMultipliers[i] = factorMultipliers[i].div(new Decimal(10).pow(game.baseShifts)) 
 		if (game.unlocks >= 3) {
-			if (game.cascadeMilestonesAchieved < 2 || game.currentChallenge == 5) factorMultipliers[i] = factorMultipliers[i].div(Decimal.max(game.vectors.add(1), 1)) //Vector divider
+			if ((game.cascadeMilestonesAchieved < 2 || game.currentChallenge == 5) && game.deutericMilestonesAchieved < 12) factorMultipliers[i] = factorMultipliers[i].div(Decimal.max(game.vectors.add(1), 1)) //Vector divider
 			if (game.shadowMilestonesAchieved >= 5) {factorMultipliers[i] = factorMultipliers[i].mul(game.vectorUpgradesBought[2].pow(5).add(1))}
 			else if (game.shadowMilestonesAchieved >= 1) {factorMultipliers[i] = factorMultipliers[i].mul(game.vectorUpgradesBought[2].pow(3).add(1))}
 			else {factorMultipliers[i] = factorMultipliers[i].mul(game.vectorUpgradesBought[2].pow(1.5).add(1))}
@@ -659,19 +769,26 @@ function update() {
 			if (game.cascadeMilestonesAchieved >= 6) {factorMultipliers[i] = factorMultipliers[i].mul(game.cascadePower.pow(0.2).add(1))}
 			else {factorMultipliers[i] = factorMultipliers[i].mul(game.cascadePower.pow(0.12).add(1))}
 		}
-		if (game.unlocks >= 7) factorMultipliers[i] = factorMultipliers[i].pow(game.flavours[0].add(1).log10().div(10).add(1).pow(2)) //Alpha-flavour effect
+		if (game.unlocks >= 7) { //Alpha-flavour effect
+			
+			if (game.shadowMilestonesAchieved >= 10) {factorMultipliers[i] = factorMultipliers[i].pow(game.flavours[0].add(1).log10().div(10).add(1).pow(2.3))}
+			else {factorMultipliers[i] = factorMultipliers[i].pow(game.flavours[0].add(1).log10().div(10).add(1).pow(2))}
+		}
+		if (game.unlocks >= 11) { //Cascade power effect
+			if (game.deutericMilestonesAchieved >= 13) {factorMultipliers[i] = factorMultipliers[i].mul(game.deuterium.pow(0.15).div(1.5).add(1).pow(2))}
+			else {factorMultipliers[i] = factorMultipliers[i].mul(game.deuterium.pow(0.15).div(1.5).add(1))}
+		}
 	}
 	game.autoclickers = game.autoclickers.add(game.factors[0].mul(factorMultipliers[0]).mul(timeMultiplier))
 	for (let i=0;i<5;i++) game.factors[i] = game.factors[i].add(game.factors[i+1].mul(factorMultipliers[i+1]).mul(timeMultiplier))
-	if (game.cascadeMilestonesAchieved >= 1 && game.autobuyers[0]) buyMaxFactors(false)
+	if ((game.cascadeMilestonesAchieved >= 1 || game.totalDeuteric.gt(0)) && game.autobuyers[0]) buyMaxFactors(false)
 	if (game.postCascadeUpgradesBought[2].eq(1) && game.autobuyers[1]) baseShift()
 		
-	game.hyperpointsToGet = game.number.floor()
 	let clusterLevelCanReach = game.number.add(1).div(4**9).log(4).div(8).floor()
 	let achievedClusters = game.clusterLevel.mul(game.clusterLevel.add(1)).div(2)
 	game.clustersToGet = Decimal.max(clusterLevelCanReach.mul(clusterLevelCanReach.add(1)).div(2).sub(achievedClusters), game.clusterLevel.add(1))
 	//Shadow milestone 3 effect
-	if (game.shadowMilestonesAchieved >= 3 && game.clustersToGet.gt(0) && game.currentBase <= 5 && game.number.gte(new Decimal(4).pow(new Decimal(8).mul(game.clusterLevel.add(1)).add(9))) && !game.clusterLimitEnabled) {
+	if ((game.shadowMilestonesAchieved >= 3 || game.deutericMilestonesAchieved >= 16) && game.clustersToGet.gt(0) && game.currentBase <= 5 && game.number.gte(new Decimal(4).pow(new Decimal(8).mul(game.clusterLevel.add(1)).add(9))) && !game.clusterLimitEnabled) {
 		game.clusters = game.clusters.add(game.clustersToGet)
 		game.totalClusters = game.totalClusters.add(game.clustersToGet)
 		game.clusterLevel = game.clusterLevel.add(game.number.add(1).div(4**9).log(4).div(8).floor().sub(game.clusterLevel))
@@ -740,12 +857,13 @@ function update() {
 		if (game.vectorsPerSecond.gt(1e100)) {
 			game.vectorsPerSecond = game.vectorsPerSecond.mul(1e25).pow(0.8)
 			if (game.vectorsPerSecond.gt("1e400")) game.vectorsPerSecond = game.vectorsPerSecond.mul("1e400").pow(0.5)
-			$("#vectorSoftcap").html("(softcapped) ")
+			$("#vectorSoftcap").text("(softcapped) ")
 		}
 		else {
-			$("#vectorSoftcap").html("")
+			$("#vectorSoftcap").text("")
 		}
 		if (game.vectorGainEnabled || game.currentChallenge == 5) game.vectors = game.vectors.add(game.vectorsPerSecond.mul(timeMultiplier))
+		if (game.deutericMilestonesAchieved >= 12) maxVectorUpgrades()
 	}
 
 	//Cascade stuff
@@ -753,10 +871,17 @@ function update() {
 	let layerMultipliers = [new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1)]
 	for (let i=0;i<7;i++) {
 		if (game.postCascadeUpgradesBought[8].eq(1)) {layerMultipliers[i] = layerMultipliers[i].mul(Decimal.max(game.layersBought[i], 1).pow(3))} //Post-cascade upgrade 9 effect
-		else if (game.cascadeMilestonesAchieved >= 5) {layerMultipliers[i] = layerMultipliers[i].mul(Decimal.max(game.layersBought[i], 1))} //Cluster upgrade 1 effect
+		else if (game.cascadeMilestonesAchieved >= 5) {layerMultipliers[i] = layerMultipliers[i].mul(Decimal.max(game.layersBought[i], 1))} //Cascade milestone 5 effect
 	}
-	game.cascadePower = game.cascadePower.add(game.layers[0].mul(layerMultipliers[0]).mul(timeMultiplier))
-	for (let i=0;i<6;i++) game.layers[i] = game.layers[i].add(game.layers[i+1].mul(layerMultipliers[i+1]).mul(timeMultiplier))
+	if (game.deutericMilestonesAchieved >= 18) {
+		game.cascadePower = game.cascadePower.add(game.layers[0].mul(layerMultipliers[0]).pow(2).mul(timeMultiplier))
+		for (let i=0;i<6;i++) game.layers[i] = game.layers[i].add(game.layers[i+1].mul(layerMultipliers[i+1]).pow(2).mul(timeMultiplier))
+	}
+	else {
+		game.cascadePower = game.cascadePower.add(game.layers[0].mul(layerMultipliers[0]).mul(timeMultiplier))
+		for (let i=0;i<6;i++) game.layers[i] = game.layers[i].add(game.layers[i+1].mul(layerMultipliers[i+1]).mul(timeMultiplier))
+	}
+	if (game.deutericMilestonesAchieved >= 17 && game.autobuyers[2]) buyMaxLayers(false)
 		
 	//Post-cascade stuff
 	if (game.currentBase <= 5 && game.postCascade) {
@@ -770,14 +895,43 @@ function update() {
 			else {game.cascadesToGet = game.cascadesToGet.mul(game.flavours[0].add(1).log10().div(10).add(1).pow(2))}
 			for (let i=1;i<5;i++) game.cascadesToGet = game.cascadesToGet.mul(game.flavours[i].add(1).log10().div(2).add(1)) //Beta-epsilon flavour effects
 		}
-		if (game.unlocks >= 8) game.cascadesToGet = game.cascadesToGet.mul(Decimal.min(game.shadowCrystals.pow(0.5).mul(4).add(1), 1e6))
-		if (game.unlocks >= 9) game.cascadesToGet = game.cascadesToGet.mul(Decimal.min(game.bloodCrystals.pow(0.5).mul(4).add(1), 1e6))
-		if (game.unlocks >= 10) game.cascadesToGet = game.cascadesToGet.mul(Decimal.min(game.divineCrystals.pow(0.5).mul(4).add(1), 1e6))
+		if (game.unlocks >= 8) {
+			if (game.deutericMilestonesAchieved >= 3) {game.cascadesToGet = game.cascadesToGet.mul(game.shadowCrystals.pow(0.5).mul(4).add(1).min(new Decimal(1e20).mul(new Decimal(1e8).pow(game.deutericChallengesBeaten[0]))))}
+			else {game.cascadesToGet = game.cascadesToGet.mul(game.shadowCrystals.pow(0.5).mul(4).add(1).min(1e12))}
+		}
+		if (game.unlocks >= 9) {
+			if (game.deutericMilestonesAchieved >= 5) {game.cascadesToGet = game.cascadesToGet.mul(game.bloodCrystals.pow(0.5).mul(4).add(1).min(new Decimal(1e20).mul(new Decimal(1e8).pow(game.deutericChallengesBeaten[1]))))}
+			else {game.cascadesToGet = game.cascadesToGet.mul(game.bloodCrystals.pow(0.5).mul(4).add(1).min(1e12))}
+		}
+		if (game.unlocks >= 10) {
+			if (game.deutericMilestonesAchieved >= 7) {game.cascadesToGet = game.cascadesToGet.mul(game.divineCrystals.pow(0.5).mul(4).add(1).min(new Decimal(1e20).mul(new Decimal(1e8).pow(game.deutericChallengesBeaten[2]))))}
+			else {game.cascadesToGet = game.cascadesToGet.mul(game.divineCrystals.pow(0.5).mul(4).add(1).min(1e12))}
+		}
+		if (game.unlocks >= 11) { //Cascade power effect
+			if (game.deutericMilestonesAchieved >= 13) {game.cascadesToGet = game.cascadesToGet.mul(game.deuterium.pow(0.15).div(1.5).add(1).pow(2))}
+			else {game.cascadesToGet = game.cascadesToGet.mul(game.deuterium.pow(0.15).div(1.5).add(1))}
+		}
+		if (game.cascadesToGet.lt(0)) game.cascadesToGet = new Decimal(0) //Sometimes it's less than 0 for some reason
+		if (game.currentDeutericChallenge == 3) game.cascadesToGet = game.cascadesToGet.pow(deutericChallenge3Effects[game.deutericChallengesBeaten[2]])
 		game.cascadesToGet = game.cascadesToGet.floor()
-		if (game.shadowMilestonesAchieved >= 8 && game.cascades.gte(game.postCascadeUpgrade1Cost)) {
-			game.postCascadeUpgradesBought[0] = game.postCascadeUpgradesBought[0].add(1)
-			if (game.postCascadeUpgradesBought[7].eq(1)) {game.postCascadeUpgrade1Cost = new Decimal(5).pow(game.postCascadeUpgradesBought[0]).mul(3).round()} //Post-cascade upgrade 8 effect
-			else {game.postCascadeUpgrade1Cost = new Decimal(5).pow(game.postCascadeUpgradesBought[0]).mul(20).round()}
+	}
+	else {game.cascadesToGet = new Decimal(0)}
+	//Autobuy post-cascade upgrade 1
+	if (game.postCascade && (game.shadowMilestonesAchieved >= 8 || game.deutericMilestonesAchieved >= 4) && game.cascades.gte(game.postCascadeUpgrade1Cost)) { 
+		//Post-cascade upgrade 8 effect
+		if (game.postCascadeUpgradesBought[7].eq(1)) {
+			let upgradeAmountCanBuy = Decimal.affordGeometricSeries(game.cascades, 3, 5, game.postCascadeUpgradesBought[0])
+			if (game.currentDeutericChallenge == 1 && upgradeAmountCanBuy.add(game.postCascadeUpgradesBought[0]).gt(deutericChallenge1Caps[game.deutericChallengesBeaten[0]])) upgradeAmountCanBuy = new Decimal(deutericChallenge1Caps[game.deutericChallengesBeaten[0]]).sub(game.postCascadeUpgradesBought[0])
+			if (upgradeAmountCanBuy.lt(0)) upgradeAmountCanBuy = new Decimal(0)
+			game.postCascadeUpgradesBought[0] = game.postCascadeUpgradesBought[0].add(upgradeAmountCanBuy)
+			game.postCascadeUpgrade1Cost = new Decimal(5).pow(game.postCascadeUpgradesBought[0]).mul(3).round()
+		} 
+		else {
+			let upgradeAmountCanBuy = Decimal.affordGeometricSeries(game.cascades, 20, 5, game.postCascadeUpgradesBought[0])
+			if (game.currentDeutericChallenge == 1 && upgradeAmountCanBuy.add(game.postCascadeUpgradesBought[0]).gt(deutericChallenge1Caps[game.deutericChallengesBeaten[0]])) upgradeAmountCanBuy = new Decimal(deutericChallenge1Caps[game.deutericChallengesBeaten[0]]).sub(game.postCascadeUpgradesBought[0])
+			if (upgradeAmountCanBuy.lt(0)) upgradeAmountCanBuy = new Decimal(0)
+			game.postCascadeUpgradesBought[0] = game.postCascadeUpgradesBought[0].add(upgradeAmountCanBuy)
+			game.postCascadeUpgrade1Cost = new Decimal(5).pow(game.postCascadeUpgradesBought[0]).mul(20).round()
 		}
 	}
 	if (game.postCascade && game.postCascadeUpgradesBought[6].eq(1)) game.cascades = game.cascades.add(game.bestCascadesPerSecond.div(10).mul(timeMultiplier))
@@ -788,6 +942,15 @@ function update() {
 	game.flavourMultipliers[1] = Decimal.min(game.flavours[2].pow(0.6).add(1), 50)
 	game.flavourMultipliers[2] = Decimal.min(game.flavours[3].pow(0.5).add(1), 50)
 	game.flavourMultipliers[3] = Decimal.min(game.flavours[4].pow(0.4).add(1), 50)
+	if (game.deutericMilestonesAchieved >= 19) {
+		for (let i=0;i<5;i++) {if (game.flavours[i].lt(game.cascades)) game.flavours[i] = game.cascades}
+	}
+	else if (game.deutericMilestonesAchieved >= 15) {
+		for (let i=1;i<5;i++) {if (game.flavours[i].lt(game.flavours[0])) game.flavours[i] = game.flavours[0]}
+	}
+	
+	let totalDeutericChallengesBeaten = 0
+	for (let i=0;i<game.deutericChallengesBeaten.length;i++) {totalDeutericChallengesBeaten += game.deutericChallengesBeaten[i]}
 	
 	//Shadow crystal stuff
 	if (game.unlocks >= 8) {
@@ -795,7 +958,10 @@ function update() {
 		if (game.shadowMilestonesAchieved >= 2) game.shadowPowerPerSecond = game.shadowPowerPerSecond.mul(game.flavours[0].add(1).log10().div(5).add(1))
 		if (game.unlocks >= 9) game.shadowPowerPerSecond = game.shadowPowerPerSecond.mul(game.bloodCrystals.pow(0.4).add(1))
 		if (game.shadowMilestonesAchieved >= 6) game.shadowPowerPerSecond = game.shadowPowerPerSecond.mul(Decimal.min(Decimal.max(game.bloodCrystals.pow(0.5), 1), 10000))
+		if (game.deutericMilestonesAchieved >= 3) game.shadowPowerPerSecond = game.shadowPowerPerSecond.mul(10)
+		if (game.deutericMilestonesAchieved >= 14) game.shadowPowerPerSecond = game.shadowPowerPerSecond.mul(new Decimal(1.5).pow(totalDeutericChallengesBeaten ** 0.6))
 		game.shadowPower = game.shadowPower.add(game.shadowPowerPerSecond.mul(timeMultiplier))
+		if (game.currentDeutericChallenge == 2 && game.shadowPower.gt(deutericChallenge2Caps[game.deutericChallengesBeaten[1]])) game.shadowPower = new Decimal(deutericChallenge2Caps[game.deutericChallengesBeaten[1]])
 		game.shadowCrystals = game.shadowPower.div(game.shadowCrystalPoint).floor()
 		if (!game.shadowCrystals.eq(game.previousCrystals)) {
 			crystalCheck()
@@ -807,7 +973,10 @@ function update() {
 	if (game.unlocks >= 9) {
 		game.bloodPowerPerSecond = game.shadowPower.pow(0.5).div(10).mul(new Decimal(2).pow(game.bloodUpgradesBought[0]))
 		if (game.unlocks >= 10) game.bloodPowerPerSecond = game.bloodPowerPerSecond.mul(game.divineCrystals.pow(0.4).add(1))
+		if (game.deutericMilestonesAchieved >= 5) game.bloodPowerPerSecond = game.bloodPowerPerSecond.mul(10)
+		if (game.deutericMilestonesAchieved >= 14) game.bloodPowerPerSecond = game.bloodPowerPerSecond.mul(new Decimal(1.5).pow(totalDeutericChallengesBeaten ** 0.6))
 		game.bloodPower = game.bloodPower.add(game.bloodPowerPerSecond.mul(timeMultiplier))
+		if (game.currentDeutericChallenge == 2 && game.bloodPower.gt(deutericChallenge2Caps[game.deutericChallengesBeaten[1]])) game.bloodPower = new Decimal(deutericChallenge2Caps[game.deutericChallengesBeaten[1]])
 		game.bloodCrystals = game.bloodPower.div(game.bloodCrystalPoint).floor()
 	}
 	
@@ -815,12 +984,40 @@ function update() {
 	if (game.unlocks >= 10) {
 		game.divinePowerPerSecond = game.bloodPower.pow(0.5).div(10).mul(new Decimal(2).pow(game.divineUpgradesBought[0]))
 		if (game.shadowMilestonesAchieved >= 7) game.divinePowerPerSecond = game.divinePowerPerSecond.mul(Decimal.max(game.shadowCrystals.pow(0.1), 1))
+		if (game.deutericMilestonesAchieved >= 7) game.divinePowerPerSecond = game.divinePowerPerSecond.mul(10)
+		if (game.deutericMilestonesAchieved >= 14) game.divinePowerPerSecond = game.divinePowerPerSecond.mul(new Decimal(1.5).pow(totalDeutericChallengesBeaten ** 0.6))
 		game.divinePower = game.divinePower.add(game.divinePowerPerSecond.mul(timeMultiplier))
+		if (game.currentDeutericChallenge == 2 && game.divinePower.gt(deutericChallenge2Caps[game.deutericChallengesBeaten[1]])) game.divinePower = new Decimal(deutericChallenge2Caps[game.deutericChallengesBeaten[1]])
 		game.divineCrystals = game.divinePower.div(game.divineCrystalPoint).floor()
 		if (game.shadowMilestonesAchieved >= 10 && game.unlocks < 11) {
 			game.unlocks = 11
 			$(".tabButton").eq(2).css("display", "inline-block")
+			$(".confirmationButton").eq(7).css("display", "block")
 		}
+	}
+	if (game.deutericMilestonesAchieved >= 4) buyMaxCrystalUpgrades(false)
+	
+	
+	//Deuteric stuff
+	game.timeThisDeuteric += timeMultiplier
+	if (game.currentBase <= 5 && game.unlocks >= 11) {
+		game.deutericToGet = game.number.add(1).log(4).sub(1).div(262144)
+		game.deutericToGet = game.deutericToGet.floor()
+		if (game.totalDeuteric.eq(0) && game.deutericToGet.gt(1)) game.deutericToGet = new Decimal(1)
+	}
+	else {game.deutericToGet = new Decimal(0)}
+	let combinatorMultipliers = [new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1)]
+	for (let i=0;i<7;i++) {
+		if (game.deutericMilestonesAchieved >= 8) combinatorMultipliers[i] = combinatorMultipliers[i].mul(Decimal.max(game.combinatorsBought[i], 1)) //Deuteric milestone 8 effect
+		if (game.deutericMilestonesAchieved >= 13) combinatorMultipliers[i] = combinatorMultipliers[i].mul(10) //Deuteric milestone 13 effect
+	}
+	game.deuterium = game.deuterium.add(game.combinators[0].mul(combinatorMultipliers[0]).mul(timeMultiplier))
+	for (let i=0;i<6;i++) game.combinators[i] = game.combinators[i].add(game.combinators[i+1].mul(combinatorMultipliers[i+1]).mul(timeMultiplier))
+		
+	//Deuteric challenge stuff
+	if (game.currentDeutericChallenge == 4 && game.cascades.gt(0)) {
+		game.slogs = game.slogs.mul(new Decimal(deutericChallenge4Rates[game.deutericChallengesBeaten[3]]).pow(timeMultiplier))
+		if (game.slogs.gt(game.cascades)) deutericReset()
 	}
 		
 	game.timeOfLastUpdate = Date.now()
@@ -835,10 +1032,10 @@ function switchTab(x) {
 	else if (x==2) {switchCascadeSubTab(cascadeSubTab)}
 	else if (x==3) { //Achievements tab
 		checkAchievements()
-		for (let i=0;i<30;i++) {
+		for (let i=0;i<36;i++) {
 			//Only make the achievement text appear if the player is at the right unlock level, otherwise make it say "???"
-			if (game.unlocks >= achievementRowUnlockLevels[Math.floor(i/6)]) {$(".achievement").eq(i).html(achievementNames[i])}
-			else {$(".achievement").eq(i).html("???")}
+			if (game.unlocks >= achievementRowUnlockLevels[Math.floor(i/6)]) {$(".achievement").eq(i).text(achievementNames[i])}
+			else {$(".achievement").eq(i).text("???")}
 			if (game.achievementsAttained[i]) {
 				$(".achievement").eq(i).css("background-color", "#060")
 				$(".achievement").eq(i).css("color", "#0f0")
@@ -850,27 +1047,33 @@ function switchTab(x) {
 		}
 	}
 	else if (x==4) { //Settings tab
-		for (let i=0;i<7;i++) {
+		for (let i=0;i<10;i++) {
 			if (game.confirmations[i]) {
-				$(".confirmation").eq(i).html("On")
+				$(".confirmation").eq(i).text("On")
 				$(".confirmation").eq(i).css("color", "#0b0")
 			}
 			else {
-				$(".confirmation").eq(i).html("Off")
+				$(".confirmation").eq(i).text("Off")
 				$(".confirmation").eq(i).css("color", "#b22")
 			}
 		}
+	}
+	if (x==5) {
+		document.body.style.backgroundColor = "#040420" 
+	}
+	else {
+		document.body.style.backgroundColor = "#010" 
 	}
 }
 
 function changeConfirmation(x) {
 	game.confirmations[x-1] = !game.confirmations[x-1]
 	if (game.confirmations[x-1]) {
-		$(".confirmation").eq(x-1).html("On")
+		$(".confirmation").eq(x-1).text("On")
 		$(".confirmation").eq(x-1).css("color", "#0b0")
 	}
 	else {
-		$(".confirmation").eq(x-1).html("Off")
+		$(".confirmation").eq(x-1).text("Off")
 		$(".confirmation").eq(x-1).css("color", "#b22")
 	}
 }
@@ -878,11 +1081,11 @@ function changeConfirmation(x) {
 function changeAutobuyer(x) {
 	game.autobuyers[x-1] = !game.autobuyers[x-1]
 	if (game.autobuyers[x-1]) {
-		$(".autobuyer").eq(x-1).html("On")
+		$(".autobuyer").eq(x-1).text("On")
 		$(".autobuyer").eq(x-1).css("color", "#0b0")
 	}
 	else {
-		$(".autobuyer").eq(x-1).html("Off")
+		$(".autobuyer").eq(x-1).text("Off")
 		$(".autobuyer").eq(x-1).css("color", "#b22")
 	}
 }
@@ -900,16 +1103,20 @@ function switchHyperESubTab(x) {
 			if (game.totalClusters.gte(clusterUnlockRequirements[i]) || game.unlocks >= 5) {$(".clusterUnlock").eq(i).css("background-color", "#410")}
 			else {$(".clusterUnlock").eq(i).css("background-color", "#180600")}
 		}
-		if (game.unlocks >= 5) $("#clusterLimit").html(format(game.clusterLimit.mul(game.clusterLimit.add(1)).div(2)))
+		if (game.unlocks >= 5) $("#clusterLimit").text(format(game.clusterLimit.mul(game.clusterLimit.add(1)).div(2)))
 	}
 	else if (x==4) { //Challenges tab
 		for (let i=0;i<6;i++) {
 			$(".challengeButton").eq(i).css("border", "2px solid #bbb")
-			$(".challengesBeaten").eq(i).html(game.challengesBeaten[i])
+			$(".challengesBeaten").eq(i).text(game.challengesBeaten[i])
 			if (game.challengesBeaten[i] == 3) {$(".challengeButton").eq(i).css("background-color", "#080")}
 			else {$(".challengeButton").eq(i).css("background-color", "")}
 		}
 		if (game.currentChallenge > 0) $(".challengeButton").eq(game.currentChallenge-1).css("border", "2px solid #0bb")
+	}
+	else if (x==6) {
+		if (game.totalBasePoints.gte(game.basePointMax)) {$("#basePointCap").text(" (max)")}
+		else {$("#basePointCap").text("")}
 	}
 }
 
@@ -943,6 +1150,45 @@ function switchCascadeSubTab(x) {
 				$(".shadowMilestone").eq(i).css("color", "#444")
 			}
 		}
+		if (game.deutericMilestonesAchieved >= 16) {
+			$(".shadowMilestone").eq(2).css("background-color", "#030")
+			$(".shadowMilestone").eq(2).css("color", "#0b0")
+		}
+	}
+}
+
+function switchDeutericSubTab(x) {
+	deutericSubTab = x
+	for (let i=0;i<4;i++) $(".deutericSubTab").eq(i).css("display", "none")
+	$(".deutericSubTab").eq(x-1).css("display", "block")
+	if (x==2) { //Recent deuterics
+		let recentDeutericsString = ""
+		for (let i=0;i<game.recentDeuterics.length;i++) recentDeutericsString = recentDeutericsString + numberToTime(game.recentDeuterics[i][1]) + ", " + format(game.recentDeuterics[i][0]) + " deuteric (" + format(new Decimal(game.recentDeuterics[i][0]).div(game.recentDeuterics[i][1]),2) + "/s)<br>"
+		$("#recentDeuterics").html(recentDeutericsString)
+	}
+	else if (x==3) { //Milestones tab
+		for (let i=0;i<deutericMilestoneRequirements.length;i++) {
+			if (game.deutericMilestonesAchieved > i) {
+				$(".deutericMilestone").eq(i).css("background-color", "#060")
+				$(".deutericMilestone").eq(i).css("color", "#0f0")
+			}
+			else {
+				$(".deutericMilestone").eq(i).css("background-color", "#013")
+				$(".deutericMilestone").eq(i).css("color", "#88f")
+			}
+		}
+		let totalChallengesBeaten = 0
+		for (let i=0;i<game.deutericChallengesBeaten.length;i++) {totalChallengesBeaten += game.deutericChallengesBeaten[i]}
+		$(".deutericMilestoneEffect").eq(0).text(format(new Decimal(1.5).pow(totalChallengesBeaten ** 0.6), 2))
+	}
+	else if (x==4) { //Challenges tab
+		for (let i=0;i<4;i++) {
+			$(".deutericChallengeButton").eq(i).css("border", "2px solid #bbb")
+			$(".deutericChallengesBeaten").eq(i).text(game.deutericChallengesBeaten[i])
+			if (game.deutericChallengesBeaten[i] == 3) {$(".deutericChallengeButton").eq(i).css("background-color", "#060")}
+			else {$(".deutericChallengeButton").eq(i).css("background-color", "")}
+		}
+		if (game.currentDeutericChallenge > 0) $(".deutericChallengeButton").eq(game.currentDeutericChallenge-1).css("border", "2px solid #0a6")
 	}
 }
 
@@ -1022,7 +1268,7 @@ function baseShift() {
 
 function gainClusters() {
 	if (game.currentBase <= 5 && game.number.gte(new Decimal(4).pow(new Decimal(8).mul(game.clusterLevel.add(1)).add(9)))) {
-		if (!game.confirmations[0] || confirm("您确定要重置集群吗?")) {
+		if (!game.confirmations[0] || confirm("Are you sure you want to reset for clusters?")) {
 			let enactClusterLimit = true
 			if (game.clusterLevel.gt(game.clusterLimit)) enactClusterLimit = false
 			game.clusters = game.clusters.add(game.clustersToGet)
@@ -1085,8 +1331,9 @@ function clusterReset() {
 	else {game.currentBase = 10}
 	game.baseShifts = 0
 	game.vectors = new Decimal(0)
-	game.vectorGainEnabled = false
-	$("#vectorGainButton").html("Enable vector gain")
+	if (game.deutericMilestonesAchieved >= 12) {game.vectorGainEnabled = true}
+	else {game.vectorGainEnabled = false}
+	$("#vectorGainButton").text("Enable vector gain")
 }
 
 function buyClusterUpgrade(x) {
@@ -1099,7 +1346,7 @@ function buyClusterUpgrade(x) {
 }
 
 function respecClusters() {
-	if (!game.confirmations[1] || confirm("您确定要重洗吗？ 它将执行集群重置!")) {
+	if (!game.confirmations[1] || confirm("Are you sure you want to respec? It will perform a cluster reset!")) {
 		if (game.currentChallenge > 0) game.currentChallenge = 0
 		clusterReset()
 		game.clusters = game.totalClusters
@@ -1122,7 +1369,7 @@ function enterChallenge(x) {
 	if (game.currentChallenge == x) {
 		exitChallenge()
 	}
-	else if (!game.confirmations[2] || confirm("您确定要进入挑战 " + x + "吗? 它将执行集群重置!")) {
+	else if (!game.confirmations[2] || confirm("Are you sure you want to enter challenge " + x + "? It will perform a cluster reset!")) {
 		game.currentChallenge = x
 		//Respec clusters if in challenge 6
 		if (game.currentChallenge == 6) {
@@ -1148,10 +1395,10 @@ function exitChallenge() {
 		for (let i=0; i<6; i++) {
 			$(".challengeButton").eq(i).css("border", "2px solid #bbb")
 			$(".challengeButton").eq(i).css("color", "#bbb")
-			$(".challengesBeaten").eq(i).html(game.challengesBeaten[i])
+			$(".challengesBeaten").eq(i).text(game.challengesBeaten[i])
 		}
 	}
-	else if (!game.confirmations[3] || confirm("您确定要退出当前的挑战吗?")) {
+	else if (!game.confirmations[3] || confirm("Are you sure you want to exit your current challenge?")) {
 		game.currentChallenge = 0
 		clusterReset()
 		for (let i=0; i<6; i++) $(".challengeButton").eq(i).css("border", "2px solid #bbb")
@@ -1160,8 +1407,8 @@ function exitChallenge() {
 
 function enableDisableVectorGain() {
 	game.vectorGainEnabled = !game.vectorGainEnabled
-	if (game.vectorGainEnabled) {$("#vectorGainButton").html("Disable vector gain")}
-	else {$("#vectorGainButton").html("Enable vector gain")}
+	if (game.vectorGainEnabled) {$("#vectorGainButton").text("Disable vector gain")}
+	else {$("#vectorGainButton").text("Enable vector gain")}
 }
 
 function resetVectors() {
@@ -1196,17 +1443,27 @@ function maxVectorUpgrades() {
 }
 
 function enterExitBasedverse() {
-	if (!game.inBasedverse && (!game.confirmations[4] || confirm("您确定要进入基础宇宙吗？ 它将执行集群重置!"))) {
+	if (!game.inBasedverse && (!game.confirmations[4] || confirm("Are you sure you want to enter the basedverse? It will perform a cluster reset!"))) {
 		game.inBasedverse = true
 		clusterReset()
 	}
-	else if (game.inBasedverse && (!game.confirmations[4] || confirm("您确定要退出基础宇宙吗?"))) {
+	else if (game.inBasedverse && (!game.confirmations[4] || confirm("Are you sure you want to exit the basedverse?"))) {
 		game.inBasedverse = false
 		let effectiveBase = game.basedverseBase.sub(1)
-		let basePointsCanGet = game.number.add(1).div(effectiveBase).log(effectiveBase).div(effectiveBase).floor()
+		let basePointsCanGet = game.number.add(1).div(effectiveBase).log(effectiveBase).div(effectiveBase).floor().min(game.basePointMax)
 		basePointsCanGet = Decimal.max(basePointsCanGet.sub(game.totalBasePoints), 0)
 		game.basePoints = game.basePoints.add(basePointsCanGet)
 		game.totalBasePoints = game.totalBasePoints.add(basePointsCanGet)
+		//Limit base points to prevent inflation
+		if (game.totalBasePoints.gte(game.basePointMax)) {
+			game.totalBasePoints = new Decimal(game.basePointMax)
+			$("#basePointCap").text(" (max)")
+		}
+		if (game.deutericMilestonesAchieved >= 11) {
+			game.upBase = game.totalBasePoints
+			game.downBase = game.totalBasePoints
+			game.basePoints = new Decimal(0)
+		}
 		clusterReset()
 	}
 }
@@ -1237,7 +1494,7 @@ function spendBasePoints(x) {
 }
 
 function respecBasePoints() {
-	if (!game.confirmations[5] || confirm("您确定要重洗您的基础点数吗？ 它将执行集群重置!")) {
+	if ((!game.confirmations[5] || confirm("Are you sure you want to respec your base points? It will perform a cluster reset!")) && game.deutericMilestonesAchieved < 11) {
 		game.upBase = new Decimal(0)
 		game.downBase = new Decimal(0)
 		game.basePoints = game.totalBasePoints
@@ -1247,7 +1504,7 @@ function respecBasePoints() {
 
 function cascade() {
 	let cBase = new Decimal(game.currentBase-1)
-	if (game.number.gte(cBase.pow(cBase.pow(cBase).add(1))) && (!game.confirmations[6] || confirm("您确定要重置级联吗？"))) {
+	if (game.number.gte(cBase.pow(cBase.pow(cBase).add(1))) && (!game.confirmations[6] || confirm("Are you sure you want to reset for a cascade?"))) {
 		cascadeReset()
 		if (game.postCascade) {
 			game.cascades = game.cascades.add(game.cascadesToGet)
@@ -1284,7 +1541,9 @@ function cascade() {
 
 function cascadeReset() {
 	if (game.bestCascadeClusters.gt(game.clusterLevel)) game.bestCascadeClusters = game.clusterLevel
-	for (let i=game.cascadeMilestonesAchieved;i<cascadeMilestoneRequirements.length;i++) {if (game.bestCascadeClusters.lte(cascadeMilestoneRequirements[i])) game.cascadeMilestonesAchieved++}
+	if (game.currentDeutericChallenge != 3) {
+		for (let i=game.cascadeMilestonesAchieved;i<cascadeMilestoneRequirements.length;i++) {if (game.bestCascadeClusters.lte(cascadeMilestoneRequirements[i])) game.cascadeMilestonesAchieved++}
+	}
 	if (game.cascadeMilestonesAchieved >= 1) $("#factorAutobuyer").css("display", "block")
 	game.clusters = new Decimal(0)
 	game.totalClusters = new Decimal(0)
@@ -1302,14 +1561,20 @@ function cascadeReset() {
 		}
 	}
 	game.currentChallenge = 0
-	if (game.cascadeMilestonesAchieved < 7) game.challengesBeaten = [0, 0, 0, 0, 0, 0]
+	if (game.cascadeMilestonesAchieved < 7 && game.deutericMilestonesAchieved < 2) game.challengesBeaten = [0, 0, 0, 0, 0, 0]
 	game.vectors = new Decimal(0)
-	game.vectorGainEnabled = false
-	$("#vectorGainButton").html("Enable vector gain")
+	if (game.deutericMilestonesAchieved >= 12) {game.vectorGainEnabled = true}
+	else {game.vectorGainEnabled = false}
+	$("#vectorGainButton").text("Enable vector gain")
 	if (game.cascadeMilestonesAchieved < 8) {
 		game.vectorUpgradesBought = [new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0)]
 		game.vectorUpgradeCosts = [new Decimal(200), new Decimal(1000), new Decimal(1000), new Decimal(100000), new Decimal(1e12), new Decimal(1e15)]
 		game.basedverseBase = new Decimal(20)
+	}
+	if (game.deutericMilestonesAchieved >= 12) {
+		game.vectorUpgradesBought[4] = new Decimal(5)
+		game.vectorUpgradeCosts[4] = new Decimal(Infinity)
+		game.basedverseBase = new Decimal(15)
 	}
 	game.inBasedverse = false
 	if (game.cascadeMilestonesAchieved < 4) {
@@ -1341,29 +1606,31 @@ function buyLayer(x) {
 	}
 }
 
-function buyMaxLayers() {
-	let layerAmountCanBuy
-	let layerCost
-	//Layers 2-6
-	for (let i=7;i>2;i--) {
-		layerAmountCanBuy = Decimal.affordGeometricSeries(game.cascades, 2**(i-2), 2**(i-2), game.layersBought[i-1])
-		layerCost = Decimal.sumGeometricSeries(layerAmountCanBuy, 2**(i-2), 2**(i-2), game.layersBought[i-1])
-		game.cascades = game.cascades.sub(layerCost)
-		game.layers[i-1] = game.layers[i-1].add(layerAmountCanBuy)
-		game.layersBought[i-1] = game.layersBought[i-1].add(layerAmountCanBuy)
-		game.layerCosts[i-1] = new Decimal(2**(i-2)).pow(game.layersBought[i-1]).mul(2**(i-2)).round()
+function buyMaxLayers(spendCascades = true) {
+	if (game.cascadeMilestonesAchieved >= 3) {
+		let layerAmountCanBuy
+		let layerCost
+		//Layers 2-6
+		for (let i=7;i>2;i--) {
+			layerAmountCanBuy = Decimal.affordGeometricSeries(game.cascades, 2**(i-2), 2**(i-2), game.layersBought[i-1])
+			layerCost = Decimal.sumGeometricSeries(layerAmountCanBuy, 2**(i-2), 2**(i-2), game.layersBought[i-1])
+			if (spendCascades) game.cascades = game.cascades.sub(layerCost)
+			game.layers[i-1] = game.layers[i-1].add(layerAmountCanBuy)
+			game.layersBought[i-1] = game.layersBought[i-1].add(layerAmountCanBuy)
+			game.layerCosts[i-1] = new Decimal(2**(i-2)).pow(game.layersBought[i-1]).mul(2**(i-2)).round()
+		}
+		//1st layers
+		layerAmountCanBuy = Decimal.affordGeometricSeries(game.cascades, 1, 2, game.layersBought[1])
+		layerCost = Decimal.sumGeometricSeries(layerAmountCanBuy, 1, 2, game.layersBought[1])
+		if (spendCascades) game.cascades = game.cascades.sub(layerCost)
+		game.layers[1] = game.layers[1].add(layerAmountCanBuy)
+		game.layersBought[1] = game.layersBought[1].add(layerAmountCanBuy)
+		game.layerCosts[1] = new Decimal(2).pow(game.layersBought[1]).round()
 	}
-	//1st layers
-	layerAmountCanBuy = Decimal.affordGeometricSeries(game.cascades, 2, 2, game.layersBought[1])
-	layerCost = Decimal.sumGeometricSeries(layerAmountCanBuy, 2, 2, game.layersBought[1])
-	game.cascades = game.cascades.sub(layerCost)
-	game.layers[1] = game.layers[1].add(layerAmountCanBuy)
-	game.layersBought[1] = game.layersBought[1].add(layerAmountCanBuy)
-	game.layerCosts[1] = new Decimal(2).pow(game.layersBought[1]).round()
 	//Power producers
 	layerAmountCanBuy = Decimal.affordGeometricSeries(game.cascades, 1, 2, game.layersBought[0])
 	layerCost = Decimal.sumGeometricSeries(layerAmountCanBuy, 1, 2, game.layersBought[0])
-	game.cascades = game.cascades.sub(layerCost)
+	if (spendCascades) game.cascades = game.cascades.sub(layerCost)
 	game.layers[0] = game.layers[0].add(layerAmountCanBuy)
 	game.layersBought[0] = game.layersBought[0].add(layerAmountCanBuy)
 	game.layerCosts[0] = new Decimal(2).pow(game.layersBought[0]).round()
@@ -1375,25 +1642,25 @@ function enableDisableClusterLimit() {
 
 function changeClusterLimit() {
 	game.clusterLimit = new Decimal(document.getElementById("clusterLimiterSlider").value)
-	$("#clusterLimit").html(format(game.clusterLimit.mul(game.clusterLimit.add(1)).div(2)))
+	$("#clusterLimit").text(format(game.clusterLimit.mul(game.clusterLimit.add(1)).div(2)))
 }
 
 function surpassCascade() {
 	if (!game.postCascade) {
 		game.postCascade = true
-		$("#surpassCascadeButton").html("You have surpassed cascade!")
+		$("#surpassCascadeButton").text("You have surpassed cascade!")
 		$("#surpassCascadeButton").css("color", "#e72")
 	}
 }
 
 function buyPostCascadeUpgrade(x) {
-	if (x==1 && game.cascades.gte(game.postCascadeUpgrade1Cost)) {
+	if (x==1 && game.cascades.gte(game.postCascadeUpgrade1Cost) && (game.currentDeutericChallenge != 1 || game.postCascadeUpgradesBought[0].lt(deutericChallenge1Caps[game.deutericChallengesBeaten[0]]))) {
 		game.cascades = game.cascades.sub(game.postCascadeUpgrade1Cost)
 		game.postCascadeUpgradesBought[0] = game.postCascadeUpgradesBought[0].add(1)
 		if (game.postCascadeUpgradesBought[7].eq(1)) {game.postCascadeUpgrade1Cost = new Decimal(5).pow(game.postCascadeUpgradesBought[0]).mul(3).round()} //Post-cascade upgrade 8 effect
 		else {game.postCascadeUpgrade1Cost = new Decimal(5).pow(game.postCascadeUpgradesBought[0]).mul(20).round()}
 	}
-	else if (game.cascades.gte(postCascadeUpgradeCosts[x-2]) && game.postCascadeUpgradesBought[x-1].eq(0)) {
+	else if (game.cascades.gte(postCascadeUpgradeCosts[x-2]) && game.postCascadeUpgradesBought[x-1].eq(0) && game.currentDeutericChallenge != 1) {
 		game.cascades = game.cascades.sub(postCascadeUpgradeCosts[x-2])
 		game.postCascadeUpgradesBought[x-1] = new Decimal(1)
 		$(".postCascadeUpgrade").eq(x-1).css("background-color", "#060")
@@ -1431,16 +1698,17 @@ function unlockFlavour(x) {
 }
 
 function convertFlavour(x) {
-	if (x==1 && game.cascades.mul(game.flavourMultipliers[0]).gte(1000)) {
+	if (x==1 && game.cascades.mul(game.flavourMultipliers[0]).gte(1000) && game.flavoursUnlocked >= 1) {
 		game.flavours[0] = game.flavours[0].add(game.cascades.div(1000).mul(game.flavourMultipliers[0]).floor())
 		if (game.flavours[0].gt(game.highestFlavours[0])) game.highestFlavours[0] = game.flavours[0]
 		game.cascades = new Decimal(0)
 	}
-	else if (game.flavours[x-2].mul(game.flavourMultipliers[x-1]).gte(1000)) {
+	else if (x>1 && game.flavours[x-2].mul(game.flavourMultipliers[x-1]).gte(1000) && game.flavoursUnlocked >= x) {
 		game.flavours[x-1] = game.flavours[x-1].add(game.flavours[x-2].div(1000).mul(game.flavourMultipliers[x-1]).floor())
 		if (game.flavours[x-1].gt(game.highestFlavours[x-1])) game.highestFlavours[x-1] = game.flavours[x-1]
 		game.flavours[x-2] = new Decimal(0)
 	}
+	
 }
 
 function buyShadowUpgrade(x) {
@@ -1448,7 +1716,7 @@ function buyShadowUpgrade(x) {
 		game.shadowPower = game.shadowPower.sub(game.shadowUpgradeCosts[x-1])
 		game.shadowUpgradesBought[x-1] = game.shadowUpgradesBought[x-1].add(1)
 		game.shadowUpgradeCosts[x-1] = new Decimal(shadowUpgradeExponents[x-1]).pow(game.shadowUpgradesBought[x-1]).mul(shadowUpgradeBases[x-1]).round()
-		if (x==2) game.shadowCrystalPoint = new Decimal(1e6).mul(new Decimal(0.8).pow(game.shadowUpgradesBought[1].pow(0.8))).ceil()
+		if (x==2) game.shadowCrystalPoint = new Decimal(1e6).mul(new Decimal(0.8).pow(game.shadowUpgradesBought[1].pow(0.8))).ceil().max(1)
 	}
 }
 
@@ -1463,6 +1731,10 @@ function crystalCheck() {
 		else {
 			$(".shadowMilestone").eq(i).css("background-color", "#111")
 			$(".shadowMilestone").eq(i).css("color", "#444")
+		}
+		if (game.deutericMilestonesAchieved >= 16) {
+			$(".shadowMilestone").eq(2).css("background-color", "#030")
+			$(".shadowMilestone").eq(2).css("color", "#0b0")
 		}
 	}
 }
@@ -1497,7 +1769,7 @@ function buyBloodUpgrade(x) {
 		game.bloodPower = game.bloodPower.sub(game.bloodUpgradeCosts[x-1])
 		game.bloodUpgradesBought[x-1] = game.bloodUpgradesBought[x-1].add(1)
 		game.bloodUpgradeCosts[x-1] = new Decimal(bloodUpgradeExponents[x-1]).pow(game.bloodUpgradesBought[x-1]).mul(bloodUpgradeBases[x-1]).round()
-		if (x==2) game.bloodCrystalPoint = new Decimal(1e6).mul(new Decimal(0.8).pow(game.bloodUpgradesBought[1].pow(0.8))).ceil()
+		if (x==2) game.bloodCrystalPoint = new Decimal(1e6).mul(new Decimal(0.8).pow(game.bloodUpgradesBought[1].pow(0.8))).ceil().max(1)
 	}
 }
 
@@ -1519,14 +1791,228 @@ function buyDivineUpgrade(x) {
 		game.divinePower = game.divinePower.sub(game.divineUpgradeCosts[x-1])
 		game.divineUpgradesBought[x-1] = game.divineUpgradesBought[x-1].add(1)
 		game.divineUpgradeCosts[x-1] = new Decimal(divineUpgradeExponents[x-1]).pow(game.divineUpgradesBought[x-1]).mul(divineUpgradeBases[x-1]).round()
-		if (x==2) game.divineCrystalPoint = new Decimal(1e6).mul(new Decimal(0.8).pow(game.divineUpgradesBought[1].pow(0.8))).ceil()
+		if (x==2) game.divineCrystalPoint = new Decimal(1e6).mul(new Decimal(0.8).pow(game.divineUpgradesBought[1].pow(0.8))).ceil().max(1)
+	}
+}
+
+function buyMaxCrystalUpgrades(spendCascades = true) {
+	//Shadow upgrades
+	for (let i=0;i<2;i++) {
+		shadowUpgradeAmountCanBuy = Decimal.affordGeometricSeries(game.shadowPower, shadowUpgradeBases[i], shadowUpgradeExponents[i], game.shadowUpgradesBought[i])
+		shadowUpgradeCost = Decimal.sumGeometricSeries(shadowUpgradeAmountCanBuy, shadowUpgradeBases[i], shadowUpgradeExponents[i], game.shadowUpgradesBought[i])
+		if (spendCascades) game.shadowPower = game.shadowPower.sub(shadowUpgradeCost)
+		game.shadowUpgradesBought[i] = game.shadowUpgradesBought[i].add(shadowUpgradeAmountCanBuy)
+		game.shadowUpgradeCosts[i] = new Decimal(shadowUpgradeExponents[i]).pow(game.shadowUpgradesBought[i]).mul(shadowUpgradeBases[i]).round()
+	}
+	game.shadowCrystalPoint = new Decimal(1e6).mul(new Decimal(0.8).pow(game.shadowUpgradesBought[1].pow(0.8))).ceil().max(1)
+	//Blood upgrades
+	for (let i=0;i<2;i++) {
+		bloodUpgradeAmountCanBuy = Decimal.affordGeometricSeries(game.bloodPower, bloodUpgradeBases[i], bloodUpgradeExponents[i], game.bloodUpgradesBought[i])
+		bloodUpgradeCost = Decimal.sumGeometricSeries(bloodUpgradeAmountCanBuy, bloodUpgradeBases[i], bloodUpgradeExponents[i], game.bloodUpgradesBought[i])
+		if (spendCascades) game.bloodPower = game.bloodPower.sub(bloodUpgradeCost)
+		game.bloodUpgradesBought[i] = game.bloodUpgradesBought[i].add(bloodUpgradeAmountCanBuy)
+		game.bloodUpgradeCosts[i] = new Decimal(bloodUpgradeExponents[i]).pow(game.bloodUpgradesBought[i]).mul(bloodUpgradeBases[i]).round()
+	}
+	game.bloodCrystalPoint = new Decimal(1e6).mul(new Decimal(0.8).pow(game.bloodUpgradesBought[1].pow(0.8))).ceil().max(1)
+	//Divine upgrades
+	for (let i=0;i<2;i++) {
+		divineUpgradeAmountCanBuy = Decimal.affordGeometricSeries(game.divinePower, divineUpgradeBases[i], divineUpgradeExponents[i], game.divineUpgradesBought[i])
+		divineUpgradeCost = Decimal.sumGeometricSeries(divineUpgradeAmountCanBuy, divineUpgradeBases[i], divineUpgradeExponents[i], game.divineUpgradesBought[i])
+		if (spendCascades) game.divinePower = game.divinePower.sub(divineUpgradeCost)
+		game.divineUpgradesBought[i] = game.divineUpgradesBought[i].add(divineUpgradeAmountCanBuy)
+		game.divineUpgradeCosts[i] = new Decimal(divineUpgradeExponents[i]).pow(game.divineUpgradesBought[i]).mul(divineUpgradeBases[i]).round()
+	}
+	game.divineCrystalPoint = new Decimal(1e6).mul(new Decimal(0.8).pow(game.divineUpgradesBought[1].pow(0.8))).ceil().max(1)
+}
+
+function deuteric() {
+	let cBase = new Decimal(game.currentBase-1)
+	if (game.number.gte(cBase.pow(cBase.pow(cBase.mul(2).add(1)).add(1))) && game.currentDeutericChallenge != 0) exitDeutericChallenge()
+	if (game.number.gte(cBase.pow(cBase.pow(cBase.mul(2).add(1)).add(1))) && (!game.confirmations[7] || game.currentDeutericChallenge != 0 || confirm("Are you sure you want to reset for deuteric?"))) {
+		game.deuteric = game.deuteric.add(game.deutericToGet)
+		game.totalDeuteric = game.totalDeuteric.add(game.deutericToGet)
+		game.recentDeuterics.unshift([game.deutericToGet, game.timeThisDeuteric])
+		if (game.deutericToGet.div(game.timeThisDeuteric).gt(game.bestDeutericPerSecond)) game.bestDeutericPerSecond = game.deutericToGet.div(game.timeThisDeuteric)
+		if (game.recentDeuterics.length > 10) game.recentDeuterics.pop()
+		game.timeThisDeuteric = 0
+		if (deutericSubTab == 2) {
+			let recentDeutericsString = ""
+			for (let i=0;i<game.recentDeuterics.length;i++) recentDeutericsString = recentDeutericsString + numberToTime(game.recentDeuterics[i][1]) + ", " + format(game.recentDeuterics[i][0]) + " deuterics (" + format(new Decimal(game.recentDeuterics[i][0]).div(game.recentDeuterics[i][1]),2) + "/s)<br>"
+			$("#recentDeuterics").html(recentDeutericsString)
+		}
+		for (let i=game.deutericMilestonesAchieved;i<deutericMilestoneRequirements.length;i++) {if (game.totalDeuteric.gte(deutericMilestoneRequirements[i])) game.deutericMilestonesAchieved++}
+		for (let i=0;i<deutericMilestoneRequirements.length;i++) {
+			if (game.deutericMilestonesAchieved > i) {
+				$(".deutericMilestone").eq(i).css("background-color", "#060")
+				$(".deutericMilestone").eq(i).css("color", "#0f0")
+			}
+			else {
+				$(".deutericMilestone").eq(i).css("background-color", "#013")
+				$(".deutericMilestone").eq(i).css("color", "#88f")
+			}
+		}
+		if (game.deutericMilestonesAchieved >= 9 && game.basePointMax.lt(2500)) game.basePointMax = new Decimal(2500) 
+		if (game.deutericMilestonesAchieved >= 10 && game.unlocks < 12) {
+			game.unlocks = 12
+			$(".deutericSubTabButton").eq(3).css("display", "inline-block")
+			$(".confirmationButton").eq(8).css("display", "block")
+			$(".confirmationButton").eq(9).css("display", "block")
+		}
+		if (game.deutericMilestonesAchieved >= 17) $("#layerAutobuyer").css("display", "block")
+		if (game.deutericMilestonesAchieved >= 20 && game.unlocks < 13) game.unlocks = 13
+		deutericReset()
+	}
+}
+
+function deutericReset() {
+	game.vectors = new Decimal(0)
+	game.basePoints = new Decimal(0)
+	game.totalBasePoints = new Decimal(0)
+	game.upBase = new Decimal(0)
+	game.downBase = new Decimal(0)
+	
+	game.timeThisCascade = 0
+	game.cascades = new Decimal(0)
+	game.recentCascades = []
+	game.bestCascadesPerSecond = new Decimal(0)
+	game.cascadePower = new Decimal(0)
+	game.layers = [new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0)]
+	game.layersBought = [new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0)]
+	game.layerCosts = [new Decimal(1), new Decimal(1), new Decimal(2), new Decimal(4), new Decimal(8), new Decimal(16), new Decimal(32)]
+	game.bestCascadeClusters = new Decimal(999)
+	if (game.deutericMilestonesAchieved >= 16) {game.cascadeMilestonesAchieved = 10}
+	else {game.cascadeMilestonesAchieved = 1}
+	
+	game.cascadesToGet = new Decimal(0)
+	if (game.currentDeutericChallenge == 1) {
+		game.postCascadeUpgradesBought = [new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(1)]
+		for (let i=1;i<postCascadeUpgradeCosts.length+1;i++) {
+			if (i!=9) {
+				$(".postCascadeUpgrade").eq(i).css("background-color", "#210")
+				$(".postCascadeUpgrade").eq(i).css("color", "#e72")
+			}
+		}
+		$("#autoBaseShift").css("display", "none")
+	}
+	else if (game.deutericMilestonesAchieved >= 6) {
+		game.postCascadeUpgradesBought = [new Decimal(0), new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1)]
+		for (let i=1;i<postCascadeUpgradeCosts.length+1;i++) {
+			$(".postCascadeUpgrade").eq(i).css("background-color", "#060")
+			$(".postCascadeUpgrade").eq(i).css("color", "#0f0")
+		}
+		$("#autoBaseShift").css("display", "block")
+	}
+	else {
+		game.postCascadeUpgradesBought = [new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(1), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(1)]
+		for (let i=1;i<postCascadeUpgradeCosts.length+1;i++) {
+			if (i!=5 && i!=9) {
+				$(".postCascadeUpgrade").eq(i).css("background-color", "#210")
+				$(".postCascadeUpgrade").eq(i).css("color", "#e72")
+			}
+		}
+		$("#autoBaseShift").css("display", "none")
+	}
+	game.postCascadeUpgrade1Cost = new Decimal(20)
+	
+	game.flavoursUnlocked = 5
+	game.flavours = [new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0)]
+	game.flavourMultipliers = [new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1), new Decimal(1)]
+	game.highestFlavours = [new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0), new Decimal(0)]
+	
+	game.shadowPower = new Decimal(0)
+	game.shadowPowerPerSecond = new Decimal(0)
+	game.shadowCrystalPoint = new Decimal(1e6)
+	game.shadowCrystals = new Decimal(0)
+	game.previousCrystals = new Decimal(0)
+	game.bestCrystals = new Decimal(0)
+	game.shadowMilestonesAchieved = 0
+	game.shadowUpgradeCosts = [new Decimal(100000), new Decimal(5e6)]
+	game.shadowUpgradesBought = [new Decimal(0), new Decimal(0)]
+	
+	game.bloodPower = new Decimal(0)
+	game.bloodPowerPerSecond = new Decimal(0)
+	game.bloodCrystalPoint = new Decimal(1e6)
+	game.bloodCrystals = new Decimal(0)
+	game.bloodUpgradeCosts = [new Decimal(100000), new Decimal(5e6)]
+	game.bloodUpgradesBought = [new Decimal(0), new Decimal(0)]
+	
+	game.divinePower = new Decimal(0)
+	game.divinePowerPerSecond = new Decimal(0)
+	game.divineCrystalPoint = new Decimal(1e6)
+	game.divineCrystals = new Decimal(0)
+	game.divineUpgradeCosts = [new Decimal(100000), new Decimal(5e6)]
+	game.divineUpgradesBought = [new Decimal(0), new Decimal(0)]
+	
+	game.slogs = new Decimal(1)
+	cascadeReset()
+}
+
+function buyCombinator(x) {
+	if (game.deuteric.gte(game.combinatorCosts[x]) && (x==0 || game.deutericMilestonesAchieved >= 2)) {
+		game.deuteric = game.deuteric.sub(game.combinatorCosts[x])
+		game.combinators[x] = game.combinators[x].add(1)
+		game.combinatorsBought[x] = game.combinatorsBought[x].add(1)
+		if (x==0 || x==1) {game.combinatorCosts[x] = new Decimal(2).pow(game.combinatorsBought[x]).round()}
+		else {game.combinatorCosts[x] = new Decimal(2**(x-1)).pow(game.combinatorsBought[x]).mul(2**(x-1)).round()}
+	}
+}
+
+function enterDeutericChallenge(x) {
+	if (game.currentDeutericChallenge == x) {
+		exitDeutericChallenge()
+	}
+	else if (!game.confirmations[8] || confirm("Are you sure you want to enter deuteric challenge " + x + "? It will perform a deuteric reset!")) {
+		game.currentDeutericChallenge = x
+		deutericReset()
+		for (let i=0; i<4; i++) $(".deutericChallengeButton").eq(i).css("border", "2px solid #bbb")
+		$(".deutericChallengeButton").eq(x-1).css("border", "2px solid #0a6")
+		if (x==4) {$("#slogsText").css("display", "block")}
+		else {$("#slogsText").css("display", "none")}
+	}
+}
+
+function exitDeutericChallenge() {
+	let cBase = new Decimal(game.currentBase-1)
+	if (game.currentDeutericChallenge == 0) {alert("You aren't in a challenge!")}
+	else if (game.number.gte(cBase.pow(cBase.pow(cBase.mul(2).add(1)).add(1)))) {
+		if (game.deutericChallengesBeaten[game.currentDeutericChallenge-1] < 3) game.deutericChallengesBeaten[game.currentDeutericChallenge-1]++
+		$("#slogsText").css("display", "none")
+		game.basePointMax = new Decimal(2500).mul(game.deutericChallengesBeaten[3]+1)
+		if (game.deutericChallengesBeaten[game.currentDeutericChallenge-1] == 3) $(".deutericChallengeButton").eq(game.currentDeutericChallenge-1).css("background-color", "#060")
+		game.currentDeutericChallenge = 0
+		deutericReset()
+		for (let i=0; i<4; i++) {
+			$(".deutericChallengeButton").eq(i).css("border", "2px solid #bbb")
+			$(".deutericChallengeButton").eq(i).css("color", "#bbb")
+			$(".deutericChallengesBeaten").eq(i).text(game.deutericChallengesBeaten[i])
+		}
+	}
+	else if (!game.confirmations[9] || confirm("Are you sure you want to exit your current challenge?")) {
+		$("#slogsText").css("display", "none")
+		game.currentDeutericChallenge = 0
+		deutericReset()
+		for (let i=0; i<6; i++) $(".deutericChallengeButton").eq(i).css("border", "2px solid #bbb")
 	}
 }
 
 
 
 
+//Increasing the time played
+lastTimePlayedUp = Date.now()
+function timePlayedUp() {
+	timePlayedDiff = (Date.now() - lastTimePlayedUp) / 1000
+	game.timePlayed += timePlayedDiff
+	timePlayedFloor = Math.floor(game.timePlayed)
+	timePlayedHours = Math.floor(timePlayedFloor / 3600)
+	timePlayedMinutes = Math.floor(timePlayedFloor / 60) % 60
+	timePlayedSeconds = timePlayedFloor % 60
+	timeString = (timePlayedHours + ":" + ((timePlayedMinutes < 10 ? '0' : '') + timePlayedMinutes) + ":" + ((timePlayedSeconds < 10 ? '0' : '') + timePlayedSeconds))
+	if (currentTab == 4) document.getElementById("timePlayed").textContent = timeString
+	lastTimePlayedUp = Date.now()
+}
 
+setInterval(timePlayedUp, 100)
 
 //Checking achievements
 function checkAchievements() {
@@ -1542,6 +2028,7 @@ function checkAchievements() {
 		if (game.challengesBeaten[i] == 3) game.achievementsAttained[i+12] = true
 		if (game.cascadeMilestonesAchieved >= cascadeMilestoneAchievements[i]) game.achievementsAttained[i+18] = true
 		if (i<5 && game.highestFlavours[i].gte(1)) game.achievementsAttained[i+24] = true
+		if (game.deutericMilestonesAchieved >= deutericMilestoneAchievements[i]) game.achievementsAttained[i+30] = true
 	}
 	if (game.highestFlavours[4].gte(1000)) game.achievementsAttained[29] = true
 }
@@ -1562,7 +2049,6 @@ function checkHotkeys() {
 	if (keysPressed[73]) increaseNumber()
 }
 setInterval(checkHotkeys, 50)
-setInterval(checkHotkeys, 50)
 
 Mousetrap.bind('r', gainHyperpoints);
 Mousetrap.bind('m', buyMaxMultipliers, 0);
@@ -1572,3 +2058,9 @@ Mousetrap.bind('u', gainClusters);
 Mousetrap.bind('v', maxVectorUpgrades);
 Mousetrap.bind('c', cascade);
 Mousetrap.bind('l', buyMaxLayers);
+Mousetrap.bind('d', deuteric);
+Mousetrap.bind('1', () => {convertFlavour(1)});
+Mousetrap.bind('2', () => {convertFlavour(2)});
+Mousetrap.bind('3', () => {convertFlavour(3)});
+Mousetrap.bind('4', () => {convertFlavour(4)});
+Mousetrap.bind('5', () => {convertFlavour(5)});

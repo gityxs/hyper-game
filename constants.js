@@ -48,11 +48,23 @@ const postCascadeUpgradeCosts = [30,50,120,300,750,1000, 5e6, 2.5e8, 1e12]
 const flavourUnlockCosts = [500,100000,1e6,1e8,1e10]
 const shadowUpgradeBases = [100000, 5e6]
 const shadowUpgradeExponents = [10, 4]
-const shadowMilestoneRequirements = [1,3,10,50,200,1500,15000,100000,1e7,1e15]
+const shadowMilestoneRequirements = [1,3,10,50,200,1500,15000,100000,1e7,1e10]
 const bloodUpgradeBases = [100000, 5e6]
 const bloodUpgradeExponents = [10, 4]
 const divineUpgradeBases = [100000, 5e6]
 const divineUpgradeExponents = [10, 4]
+const deutericMilestoneRequirements = [1,2,3,4,6,8,12,16,25,40,50,60,75,100,150,250,350,500,650,1000,1e10]
+const deutericMilestoneAchievements = [1,2,4,6,8,10]
+const deutericChallengeInfos = [
+["Post-cascade upgrade 1 can only be bought 20 times, and upgrades 2-9 cannot be bought", "Post-cascade upgrade 1 can only be bought 5 times, and upgrades 2-9 cannot be bought", "Post-cascade upgrades 1-9 cannot be bought", "Post-cascade upgrades 1-9 cannot be bought"],
+["Shadow/blood/divine power is limited to 1.00e16", "Shadow/blood/divine power is limited to 1.00e14", "Shadow/blood/divine power is limited to 999,999", "Shadow/blood/divine power is limited to 999,999"],
+["Cascade milestones cannot be attained, and cascade gain is ^0.9", "Cascade milestones cannot be attained, and cascade gain is ^0.5", "Cascade milestones cannot be attained, and cascade gain is ^0.3", "Cascade milestones cannot be attained, and cascade gain is ^0.3"],
+["You gain <span style='color: #d44'>slogs</span> exponentially starting from your first cascade. If they surpass your cascade amount, the challenge resets.", "You gain <span style='color: #d44'>slogs</span> exponentially starting from your first cascade. If they surpass your cascade amount, the challenge resets.", "You gain <span style='color: #d44'>slogs</span> exponentially starting from your first cascade. If they surpass your cascade amount, the challenge resets.", "You gain <span style='color: #d44'>slogs</span> exponentially starting from your first cascade. If they surpass your cascade amount, the challenge resets."]
+]
+const deutericChallenge1Caps = [20,5,0,0]
+const deutericChallenge2Caps = [1e16,1e14,999999,0]
+const deutericChallenge3Effects = [0.9,0.5,0.3,0.3]
+const deutericChallenge4Rates = [2,3,9,9]
 
 const achievementNames = [
 "Achieve 1Ex##2",
@@ -84,6 +96,12 @@ const achievementNames = [
 "Have 1 gamma-flavour",
 "Have 1 delta-flavour",
 "Have 1 epsilon-flavour",
-"Have 1,000 epsilon-flavour"
+"Have 1,000 epsilon-flavour",
+"Achieve 1 deuteric milestone",
+"Achieve 2 deuteric milestones",
+"Achieve 4 deuteric milestones",
+"Achieve 6 deuteric milestones",
+"Achieve 8 deuteric milestones",
+"Achieve 10 deuteric milestones"
 ]
-const achievementRowUnlockLevels = [0,0,0,5,7]
+const achievementRowUnlockLevels = [0,0,0,5,7,11]

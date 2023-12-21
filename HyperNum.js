@@ -22,8 +22,8 @@ function modulo(x,y) {
 
 let hashtagColours = ["#77d", "#a7d", "#d7d", "#d77", "#da7", "#dd7", "#7d7", "#7dd", "#7ad"]
 
-function toHyperNumSection(input, base=10, coloured=false, recursionLimit=new Decimal(13)) {
-    if (recursionLimit.eq(0)) {return '...'}
+function toHyperNumSection(input, base=10, coloured=false, recursionLimit=new Decimal(14)) {
+    if (recursionLimit.lte(0)) {return '...'}
     input = new Decimal(input).round()
     base = new Decimal(base)
     if (input.lt(base.pow(2))) {return input.div(base).floor();}
@@ -36,18 +36,18 @@ function toHyperNumSection(input, base=10, coloured=false, recursionLimit=new De
     //let truncate = input.gte(base.pow(base.pow(base.add(1).mul(2).sub(1))))
     let truncate = false
     if (level.eq(0)) {
-        if (coloured) {return modulo(input.div(base), base) + "<span style='color: #77d'>#</span>" + toHyperNumSection(input.div(base).add(1e-8).floor(), base, coloured, recursionLimit.sub(1))}
-        else {return modulo(input.div(base), base) + "#" + toHyperNumSection(input.div(base).add(1e-8).floor(), base, coloured, recursionLimit.sub(1))}
+        if (coloured) {return modulo(input.div(base), base) + "<span style='color: #77d'>#</span>" + toHyperNumSection(input.div(base).add(1e-8).floor(), base, coloured, recursionLimit.sub(level.div(4).min(2).max(1)))}
+        else {return modulo(input.div(base), base) + "#" + toHyperNumSection(input.div(base).add(1e-8).floor(), base, coloured, recursionLimit.sub(level.div(4).min(2).max(1)))}
     }
     else {
         //Start should say "0" for 1E1##2, or base.sub(1) for 1eX##2 where X is the base
-        if (coloured) {return base.sub(1) + "<span style='color: " + hashtagColours[level%9] + "'>" + delimiter + "</span>" + (truncate?base.sub(1).toString():toHyperNumSection(input.div(threshold).add(1e-8).floor(), base, coloured, recursionLimit.sub(1)))}
-        else {return base.sub(1) + delimiter + (truncate?base.sub(1).toString():toHyperNumSection(input.div(threshold).add(1e-8).floor(), base, coloured, recursionLimit.sub(1)))}
+        if (coloured) {return base.sub(1) + "<span style='color: " + hashtagColours[level%9] + "'>" + delimiter + "</span>" + (truncate?base.sub(1).toString():toHyperNumSection(input.div(threshold).add(1e-8).floor(), base, coloured, recursionLimit.sub(level.div(4).min(2).max(1))))}
+        else {return base.sub(1) + delimiter + (truncate?base.sub(1).toString():toHyperNumSection(input.div(threshold).add(1e-8).floor(), base, coloured, recursionLimit.sub(level.div(4).min(2).max(1))))}
     }
 }
 
 function hashtags_pow(x, base, recursionLimit=new Decimal(7)){
-    if (recursionLimit.eq(0)) {return '...'}
+    if (recursionLimit.lte(0)) {return '...'}
     if (x.eq(0)) {return '1';}
     base = new Decimal(base);
     let threshold = base.pow(x);
@@ -65,7 +65,7 @@ function hashtags_pow(x, base, recursionLimit=new Decimal(7)){
 }
 
 function hashtags(x, base=10, recursionLimit=new Decimal(7)) {
-    if (recursionLimit.eq(0)) {return '...'}
+    if (recursionLimit.lte(0)) {return '...'}
     x = new Decimal(x).round();
     base = new Decimal(base);
     if (x.lt(base)) {return x.toString();}
